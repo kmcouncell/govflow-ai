@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { GitBranch, Play, Sparkles } from "lucide-react";
+import { GitBranch, Loader2, Play, Sparkles } from "lucide-react";
 import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { GovflowApiError, postGraphInvoke } from "@/lib/govflow-api";
 import { getPublicEnv } from "@/lib/env";
 import type { GraphInvokeMessage } from "@/lib/stream-graph";
@@ -42,19 +43,29 @@ export function WorkflowSimulatorPage() {
   });
 
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-6">
-      <div className="space-y-1">
+    <div className="mx-auto flex max-w-5xl flex-col gap-8 pb-10">
+      <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight">Interactive workflow simulator</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Workflow simulator</h1>
           <Badge variant="outline">{env.environment}</Badge>
         </div>
-        <p className="max-w-3xl text-sm text-muted-foreground">
-          Each scenario calls <span className="font-mono">POST /v1/graph/invoke</span> with a preset user message. Inspect
-          JSON output, guardrails summary, and observability to validate routing before go-live.
+        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+          Preset scenarios call <span className="font-mono text-foreground/90">POST /v1/graph/invoke</span> for a
+          single non-streaming run. Inspect routing, guardrails, and observability before promoting changes.
         </p>
       </div>
 
-      <Card className="border-border/80 bg-card/60">
+      <Card className="relative border-border/70 bg-card/70 shadow-sm ring-1 ring-border/40">
+        {invoke.isPending ? (
+          <div
+            className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 rounded-lg bg-background/70 backdrop-blur-sm"
+            aria-busy="true"
+            aria-label="Running graph invoke"
+          >
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm font-medium text-muted-foreground">Running agent graph…</p>
+          </div>
+        ) : null}
         <CardHeader>
           <div className="flex items-center gap-2">
             <GitBranch className="h-5 w-5 text-primary" />
@@ -79,8 +90,17 @@ export function WorkflowSimulatorPage() {
           <p className="text-sm text-muted-foreground">{preset.description}</p>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" onClick={() => invoke.mutate()} disabled={invoke.isPending}>
-              <Play className="mr-2 h-4 w-4" />
-              {invoke.isPending ? "Running…" : "Run agents"}
+              {invoke.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Running…
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" />
+                  Run agents
+                </>
+              )}
             </Button>
             {invoke.isSuccess ? (
               <Badge variant="secondary" className="font-mono text-xs">
@@ -96,7 +116,7 @@ export function WorkflowSimulatorPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-border/80 bg-card/60">
+      <Card className="border-border/70 bg-card/70 shadow-sm ring-1 ring-border/40">
         <CardHeader>
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
@@ -111,6 +131,12 @@ export function WorkflowSimulatorPage() {
               <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-relaxed">
                 {JSON.stringify(invoke.data, null, 2)}
               </pre>
+            ) : invoke.isPending ? (
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-full max-w-md" />
+                <Skeleton className="h-4 w-full max-w-lg" />
+                <Skeleton className="h-4 w-full max-w-sm" />
+              </div>
             ) : (
               <p className="text-sm text-muted-foreground">Run a scenario to see structured graph output.</p>
             )}

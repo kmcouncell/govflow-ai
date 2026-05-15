@@ -6,17 +6,17 @@ import { renderAppWithProviders } from "@/test/render-app";
 describe("App routing", () => {
   it("renders dashboard on /", () => {
     renderAppWithProviders("/");
-    expect(screen.getByRole("heading", { name: /intelligent dashboard/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /operations dashboard/i })).toBeInTheDocument();
   });
 
   it("renders assistant on /assistant", () => {
     renderAppWithProviders("/assistant");
-    expect(screen.getByRole("heading", { name: /streaming assistant/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /policy assistant/i })).toBeInTheDocument();
   });
 
   it("renders workflow simulator on /workflow", () => {
     renderAppWithProviders("/workflow");
-    expect(screen.getByRole("heading", { name: /interactive workflow simulator/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /workflow simulator/i })).toBeInTheDocument();
   });
 
   it("redirects unknown paths to dashboard", async () => {

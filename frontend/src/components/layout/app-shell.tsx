@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
-import { Activity, GitBranch, LayoutDashboard, MessageSquare, Shield } from "lucide-react";
+import { Activity, GitBranch, LayoutDashboard, Loader2, MessageSquare, Shield } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -52,12 +52,12 @@ function NavItems({
           to={to}
           end={end}
           onClick={onNavigate}
-          className={({ isActive }) =>
+            className={({ isActive }) =>
             cn(
-              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
               isActive
-                ? "bg-primary/10 text-primary dark:bg-primary/20"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                ? "bg-primary/12 text-primary shadow-sm dark:bg-primary/20"
+                : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
             )
           }
         >
@@ -81,30 +81,30 @@ export function AppShell() {
   });
 
   return (
-    <div className="flex min-h-dvh w-full bg-background">
-      <aside className="hidden w-60 shrink-0 border-r bg-card/40 backdrop-blur-sm md:flex md:flex-col">
-        <div className="flex h-14 items-center gap-2 border-b px-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
+    <div className="flex min-h-dvh w-full bg-gradient-to-b from-background to-muted/30">
+      <aside className="hidden w-64 shrink-0 border-r border-border/80 bg-card/50 shadow-sm backdrop-blur-sm md:flex md:flex-col">
+        <div className="flex h-16 items-center gap-3 border-b border-border/80 px-4">
+          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-xs font-bold tracking-tight text-primary-foreground shadow-sm">
             GF
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold leading-tight">{env.appName}</p>
-            <p className="text-xs text-muted-foreground">Operations console</p>
+            <p className="truncate text-sm font-semibold leading-tight tracking-tight">{env.appName}</p>
+            <p className="text-xs text-muted-foreground">Federal operations console</p>
           </div>
         </div>
-        <div className="flex-1 py-4">
+        <div className="flex-1 py-5">
           <NavItems env={env} />
         </div>
-        <div className="border-t p-4">
+        <div className="border-t border-border/80 p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Shield className="h-3.5 w-3.5" />
-            <span>Guardrails & audit-ready</span>
+            <Shield className="h-3.5 w-3.5 shrink-0 text-primary/80" />
+            <span>Guardrails and audit-ready defaults</span>
           </div>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-md">
+        <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-border/80 bg-background/90 px-4 shadow-sm backdrop-blur-md md:px-6">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="sm" className="md:hidden" aria-label="Open menu">
@@ -123,9 +123,9 @@ export function AppShell() {
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Activity className="hidden h-4 w-4 text-muted-foreground sm:block" />
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">Mission overview</p>
+              <p className="truncate text-sm font-semibold tracking-tight">Mission overview</p>
               <p className="truncate text-xs text-muted-foreground">
-                Environment: <span className="font-mono">{env.environment}</span>
+                Environment <span className="font-mono text-foreground/80">{env.environment}</span>
               </p>
             </div>
           </div>
@@ -133,12 +133,21 @@ export function AppShell() {
             <Badge
               variant="outline"
               className={cn(
-                "font-mono text-xs",
-                live.isSuccess && "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
+                "min-w-[5.5rem] justify-center font-mono text-xs tabular-nums",
+                live.isSuccess && "border-emerald-500/45 text-emerald-800 dark:text-emerald-400",
                 live.isError && "border-destructive/40 text-destructive",
               )}
             >
-              {live.isLoading ? "API …" : live.isError ? "API offline" : "API live"}
+              {live.isLoading ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+                  Checking
+                </span>
+              ) : live.isError ? (
+                "API offline"
+              ) : (
+                "API live"
+              )}
             </Badge>
             <Badge variant="outline" className="font-mono text-xs">
               {env.apiBaseUrl.replace(/^https?:\/\//, "")}
@@ -147,7 +156,7 @@ export function AppShell() {
           <Separator orientation="vertical" className="hidden h-6 sm:block" />
           <ModeToggle />
         </header>
-        <main className="flex-1 overflow-auto p-4 md:p-6">
+        <main className="flex-1 overflow-auto p-4 md:p-8">
           <ErrorBoundary title="Page error">
             <Outlet key={location.pathname} />
           </ErrorBoundary>

@@ -31,16 +31,26 @@ qa:
 
 prompts:
   generative_system: |
-    You are a government workflow assistant. Answer only from the provided context.
-    Every factual claim must end with citation markers like [1] referring to the excerpt index.
-    If the context is insufficient, say you do not know.
+    You are a senior analyst for U.S. federal mission programs. Answer **only** from the provided
+    context excerpts. Use a neutral, professional tone suitable for government audiences.
+
+    Citation rules:
+    - Every factual claim must end with a bracketed citation such as [1] referring to the excerpt
+      index shown in the prompt.
+    - Do not merge or invent excerpt numbers.
+
+    If the context is insufficient or contradictory, respond with **"I do not know from the
+    provided sources."** and optionally list what additional document types would be needed.
+    Never fabricate memorandum numbers, FAR citations, or agency-specific thresholds.
   generative_user: |
     Context excerpts (each block is numbered for citations):
     {context_excerpts}
 
     Question: {question}
 
-    Produce a concise answer with bracketed citations [n] aligned to the excerpt numbers.
+    Produce a concise answer. After each factual sentence or clause drawn from the excerpts,
+    append the appropriate citation marker [n]. If no excerpt supports a statement, remove that
+    statement or say you do not know.
   hallucination_check_user: |
     Candidate answer:
     {answer}
@@ -48,5 +58,5 @@ prompts:
     Allowed source text (compressed):
     {sources_compressed}
 
-    Reply with exactly one float in [0,1] meaning groundedness (overlap of answer with sources).
-    No other text.
+    Reply with exactly one float in [0,1] meaning groundedness (semantic overlap of the answer
+    with the allowed sources). No other text.

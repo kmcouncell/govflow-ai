@@ -1,6 +1,6 @@
 import * as React from "react";
+import { Loader2 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -50,9 +50,11 @@ export function StreamingChat({ className }: StreamingChatProps) {
 
   React.useEffect(() => () => stop(), [stop]);
 
+  const isStreaming = messages.some((m) => m.role === "assistant" && m.streaming);
+
   const send = () => {
     const text = input.trim();
-    if (!text) return;
+    if (!text || isStreaming) return;
     setInput("");
     setError(null);
     setThoughtLines([]);
@@ -119,17 +121,17 @@ export function StreamingChat({ className }: StreamingChatProps) {
   };
 
   return (
-    <div className={cn("mx-auto flex max-w-4xl flex-col gap-4", className)}>
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Streaming assistant</h1>
-        <p className="text-sm text-muted-foreground">
-          Messages stream from <span className="font-mono">{env.graphStreamPath}</span> when live API is enabled.
-          Automatic fallback runs if the backend is unreachable.
+    <div className={cn("mx-auto flex max-w-4xl flex-col gap-6 pb-10", className)}>
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Policy assistant</h1>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Streams from <span className="font-mono text-foreground/90">{env.graphStreamPath}</span> when the live API is
+          enabled. If the backend is unreachable, the console falls back to an offline preview stream.
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="border-border/80 bg-card/60 lg:col-span-2">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="border-border/70 bg-card/70 shadow-sm ring-1 ring-border/40 lg:col-span-2">
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Session</CardTitle>
@@ -162,9 +164,13 @@ export function StreamingChat({ className }: StreamingChatProps) {
             <ScrollArea className="h-[min(60vh,520px)] p-4">
               <div className="space-y-4 pr-3">
                 {messages.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Ask a policy or workflow question. Assistant output streams as SSE chunks arrive from LangGraph.
-                  </p>
+                  <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 p-6 text-center">
+                    <p className="text-sm font-medium text-foreground">Start a conversation</p>
+                    <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                      Ask about telework documentation, records retention, FOIA steps, or acquisition thresholds from the
+                      sample corpus. Messages are validated by backend guardrails when online.
+                    </p>
+                  </div>
                 ) : null}
                 {messages.map((m) => (
                   <div
@@ -172,8 +178,8 @@ export function StreamingChat({ className }: StreamingChatProps) {
                     className={cn(
                       "flex flex-col gap-1 rounded-lg border px-3 py-2 text-sm shadow-sm",
                       m.role === "user"
-                        ? "ml-8 border-primary/25 bg-primary/5"
-                        : "mr-8 border-muted bg-muted/40",
+                        ? "ml-6 border-primary/30 bg-primary/10 sm:ml-10"
+                        : "mr-6 border-border bg-muted/35 sm:mr-10",
                     )}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -181,12 +187,21 @@ export function StreamingChat({ className }: StreamingChatProps) {
                         {m.role}
                       </span>
                       {m.role === "assistant" && m.streaming ? (
-                        <Badge variant="secondary" className="text-[10px]">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-primary">
+                          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
                           Streaming
-                        </Badge>
+                        </span>
                       ) : null}
                     </div>
-                    <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                    <p className="whitespace-pre-wrap leading-relaxed">
+                      {m.content}
+                      {m.role === "assistant" && m.streaming && !m.content ? (
+                        <span className="inline-flex items-center gap-2 text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden />
+                          Awaiting first token…
+                        </span>
+                      ) : null}
+                    </p>
                   </div>
                 ))}
                 <div ref={bottomRef} />
@@ -208,15 +223,22 @@ export function StreamingChat({ className }: StreamingChatProps) {
                 rows={3}
               />
               <div className="flex justify-end">
-                <Button type="button" onClick={send} disabled={!input.trim()}>
-                  Send
+                <Button type="button" onClick={send} disabled={!input.trim() || isStreaming}>
+                  {isStreaming ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      Sending
+                    </>
+                  ) : (
+                    "Send"
+                  )}
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-border/80 bg-card/60">
+        <Card className="border-border/70 bg-card/70 shadow-sm ring-1 ring-border/40">
           <CardHeader>
             <CardTitle className="text-base">Agent reasoning</CardTitle>
             <CardDescription className="text-xs">

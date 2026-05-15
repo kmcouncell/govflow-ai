@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { AlertCircle, Brain, Cpu, LineChart, RefreshCw, ShieldCheck } from "lucide-react";
+import { AlertCircle, Brain, Cpu, LineChart, Loader2, RefreshCw, ShieldCheck } from "lucide-react";
 import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -91,7 +91,9 @@ export function DashboardPage() {
     mutationFn: (question: string) => postRagQuery({ question, top_k: 5 }),
   });
 
-  const [ragQuestion, setRagQuestion] = React.useState("What topics are covered in the sample knowledge base?");
+  const [ragQuestion, setRagQuestion] = React.useState(
+    "What telework documentation must supervisors retain per the sample OMB memorandum?",
+  );
 
   const apiDown = live.isError;
   const obs = demo.data?.result?.observability as Record<string, unknown> | undefined;
@@ -127,7 +129,7 @@ export function DashboardPage() {
   ];
 
   return (
-    <div className="mx-auto flex max-w-6xl flex-col gap-8">
+    <div className="mx-auto flex max-w-6xl flex-col gap-10 pb-10">
       {apiDown ? (
         <Card className="border-amber-500/40 bg-amber-500/5">
           <CardHeader className="flex flex-row items-start gap-2 pb-2">
@@ -143,10 +145,13 @@ export function DashboardPage() {
         </Card>
       ) : null}
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-2">
-          <h1 data-testid="dashboard-title" className="text-2xl font-semibold tracking-tight md:text-3xl">
-            Intelligent dashboard
+          <h1
+            data-testid="dashboard-title"
+            className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl"
+          >
+            Operations dashboard
           </h1>
           <Badge variant="outline">{env.environment}</Badge>
           {live.isFetching || ready.isFetching ? (
@@ -155,9 +160,9 @@ export function DashboardPage() {
             </Badge>
           ) : null}
         </div>
-        <p className="max-w-3xl text-sm text-muted-foreground md:text-base">
-          Live health probes and an optional agent snapshot power the cards below. RAG uses the same backend deployment
-          as the assistant.
+        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
+          Live health probes, an optional LangGraph snapshot, and a retrieval check against the indexed corpus. All
+          panels degrade gracefully when the API is offline.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -181,7 +186,7 @@ export function DashboardPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map((m) => (
-          <Card key={m.label} className="border-border/80 bg-card/60 shadow-sm">
+          <Card key={m.label} className="border-border/70 bg-card/70 shadow-sm ring-1 ring-border/40">
             <CardHeader className="pb-2">
               <CardDescription>{m.label}</CardDescription>
               {live.isLoading && m.label === "API liveness" ? (
@@ -200,7 +205,7 @@ export function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="border-border/80 bg-card/60 lg:col-span-2">
+        <Card className="border-border/70 bg-card/70 shadow-sm ring-1 ring-border/40 lg:col-span-2">
           <CardHeader>
             <div className="flex items-center gap-2">
               <LineChart className="h-5 w-5 text-primary" />
@@ -246,7 +251,14 @@ export function DashboardPage() {
                   disabled={!ragQuestion.trim() || ragMutation.isPending}
                   onClick={() => ragMutation.mutate(ragQuestion.trim())}
                 >
-                  Ask
+                  {ragMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      Running
+                    </>
+                  ) : (
+                    "Ask"
+                  )}
                 </Button>
               </div>
               {ragMutation.isError ? (
@@ -268,7 +280,7 @@ export function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-border/80 bg-card/60">
+        <Card className="border-border/70 bg-card/70 shadow-sm ring-1 ring-border/40">
           <CardHeader>
             <CardTitle>AI insights</CardTitle>
             <CardDescription>Derived from the latest successful agent snapshot when available.</CardDescription>

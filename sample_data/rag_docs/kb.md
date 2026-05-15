@@ -1,12 +1,15 @@
-# Sample knowledge base for RAG tests and demos (path referenced via `GOVFLOW_RAG_SOURCE_DIR`).
+# GovFlow AI — sample knowledge base index
 
-The **GovFlow AI** assistant ingests Markdown from this directory when configured.
+This directory is the default **RAG corpus** for GovFlow AI (see `GOVFLOW_RAG_SOURCE_DIR` in `.env.example`). All factual answers in demos should cite bracketed sources like `[1]` when using generative RAG mode.
 
-## Policy excerpt
+## Corpus layout
 
-All responses must cite retrieved sources using bracketed indices like [1].
+| Section | Path | Purpose |
+| --- | --- | --- |
+| Policies | `policies/` | Fictional federal-style policy excerpts for grounding demos |
+| Manuals | `manuals/` | Operator and privacy handbook excerpts |
+| Workflows | `workflows/` | Step-by-step procedural examples |
 
-## Acronyms
+## Disclaimer
 
-- **RAG**: retrieval-augmented generation
-- **PII**: personally identifiable information
+Documents are **synthetic training and demo materials** only. They do not constitute legal advice or official government policy.
