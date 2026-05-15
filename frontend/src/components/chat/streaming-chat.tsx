@@ -33,6 +33,7 @@ export function StreamingChat({ className }: StreamingChatProps) {
   const env = getPublicEnv();
   const [input, setInput] = React.useState("");
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
+  const [thoughtLines, setThoughtLines] = React.useState<string[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   const [useLiveApi, setUseLiveApi] = React.useState(true);
   const abortRef = React.useRef<AbortController | null>(null);
@@ -54,6 +55,7 @@ export function StreamingChat({ className }: StreamingChatProps) {
     if (!text) return;
     setInput("");
     setError(null);
+    setThoughtLines([]);
     stop();
 
     const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", content: text };
@@ -66,6 +68,11 @@ export function StreamingChat({ className }: StreamingChatProps) {
       setMessages((prev) =>
         prev.map((m) => (m.id === asstId ? { ...m, content: m.content + delta } : m)),
       );
+    };
+
+    const appendThoughts = (lines: string[]) => {
+      if (!lines.length) return;
+      setThoughtLines((prev) => [...prev, ...lines]);
     };
 
     const finalize = () => {
@@ -83,6 +90,7 @@ export function StreamingChat({ className }: StreamingChatProps) {
               threadId: undefined,
               signal: controller.signal,
               onAssistantDelta: bumpAssistant,
+              onThoughtLines: appendThoughts,
             });
           } else {
             await streamMockAssistantResponse(text, controller.signal, bumpAssistant);
@@ -120,92 +128,118 @@ export function StreamingChat({ className }: StreamingChatProps) {
         </p>
       </div>
 
-      <Card className="border-border/80 bg-card/60">
-        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>Session</CardTitle>
-            <CardDescription>User messages are validated by backend guardrails when the API is online.</CardDescription>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant={useLiveApi ? "default" : "outline"}
-              onClick={() => setUseLiveApi(true)}
-            >
-              Live API
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={!useLiveApi ? "default" : "outline"}
-              onClick={() => setUseLiveApi(false)}
-            >
-              Demo only
-            </Button>
-            <Button type="button" size="sm" variant="outline" onClick={stop}>
-              Stop
-            </Button>
-          </div>
-        </CardHeader>
-        <Separator />
-        <CardContent className="p-0">
-          <ScrollArea className="h-[min(60vh,520px)] p-4">
-            <div className="space-y-4 pr-3">
-              {messages.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Ask a policy or workflow question. Assistant output streams token-by-token as SSE chunks arrive.
-                </p>
-              ) : null}
-              {messages.map((m) => (
-                <div
-                  key={m.id}
-                  className={cn(
-                    "flex flex-col gap-1 rounded-lg border px-3 py-2 text-sm shadow-sm",
-                    m.role === "user"
-                      ? "ml-8 border-primary/25 bg-primary/5"
-                      : "mr-8 border-muted bg-muted/40",
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      {m.role}
-                    </span>
-                    {m.role === "assistant" && m.streaming ? (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Streaming
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
-                </div>
-              ))}
-              <div ref={bottomRef} />
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Card className="border-border/80 bg-card/60 lg:col-span-2">
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>Session</CardTitle>
+              <CardDescription>User messages are validated by backend guardrails when the API is online.</CardDescription>
             </div>
-          </ScrollArea>
-          <Separator />
-          <div className="space-y-2 p-4">
-            {error ? <p className="text-xs text-destructive">{error}</p> : null}
-            <Textarea
-              placeholder="Type your message… (Shift+Enter for newline)"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              rows={3}
-            />
-            <div className="flex justify-end">
-              <Button type="button" onClick={send} disabled={!input.trim()}>
-                Send
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={useLiveApi ? "default" : "outline"}
+                onClick={() => setUseLiveApi(true)}
+              >
+                Live API
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={!useLiveApi ? "default" : "outline"}
+                onClick={() => setUseLiveApi(false)}
+              >
+                Demo only
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={stop}>
+                Stop
               </Button>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <Separator />
+          <CardContent className="p-0">
+            <ScrollArea className="h-[min(60vh,520px)] p-4">
+              <div className="space-y-4 pr-3">
+                {messages.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    Ask a policy or workflow question. Assistant output streams as SSE chunks arrive from LangGraph.
+                  </p>
+                ) : null}
+                {messages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={cn(
+                      "flex flex-col gap-1 rounded-lg border px-3 py-2 text-sm shadow-sm",
+                      m.role === "user"
+                        ? "ml-8 border-primary/25 bg-primary/5"
+                        : "mr-8 border-muted bg-muted/40",
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {m.role}
+                      </span>
+                      {m.role === "assistant" && m.streaming ? (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Streaming
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="whitespace-pre-wrap leading-relaxed">{m.content}</p>
+                  </div>
+                ))}
+                <div ref={bottomRef} />
+              </div>
+            </ScrollArea>
+            <Separator />
+            <div className="space-y-2 p-4">
+              {error ? <p className="text-xs text-destructive">{error}</p> : null}
+              <Textarea
+                placeholder="Type your message… (Shift+Enter for newline)"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+                rows={3}
+              />
+              <div className="flex justify-end">
+                <Button type="button" onClick={send} disabled={!input.trim()}>
+                  Send
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/80 bg-card/60">
+          <CardHeader>
+            <CardTitle className="text-base">Agent reasoning</CardTitle>
+            <CardDescription className="text-xs">
+              Routing signals per SSE update, plus observability totals when the stream completes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[min(60vh,520px)] px-4 pb-4">
+              {thoughtLines.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Thought lines appear as the graph advances.</p>
+              ) : (
+                <ul className="space-y-2 pr-3 text-xs leading-relaxed">
+                  {thoughtLines.map((line, i) => (
+                    <li key={`${i}-${line.slice(0, 24)}`} className="rounded-md border bg-muted/30 px-2 py-1.5 font-mono">
+                      {line}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

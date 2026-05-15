@@ -1,6 +1,6 @@
 import { getPublicEnv } from "@/lib/env";
+import { formatObservabilityForThoughtPanel, parseSseDataLine } from "@/lib/graph-sse";
 import { joinApiUrl } from "@/lib/url";
-import { parseSseDataLine } from "@/lib/graph-sse";
 
 export type GraphInvokeMessage = {
   role: "system" | "user" | "assistant" | "tool";
@@ -15,6 +15,8 @@ export type StreamGraphOptions = {
   signal: AbortSignal;
   onAssistantDelta: (delta: string) => void;
   onDone?: (raw: Record<string, unknown>) => void;
+  /** Incremental routing / agent signals extracted from each SSE update. */
+  onThoughtLines?: (lines: string[]) => void;
 };
 
 function parseSseBlocks(buffer: string): { events: string[]; rest: string } {
@@ -63,11 +65,18 @@ export async function streamGraphResponse(options: StreamGraphOptions): Promise<
         if (payload === "[DONE]") continue;
         const ev = parseSseDataLine(payload);
         if (!ev) continue;
-        if (ev.kind === "update" && ev.assistantDelta) {
-          options.onAssistantDelta(ev.assistantDelta);
+        if (ev.kind === "update") {
+          if (ev.assistantDelta) options.onAssistantDelta(ev.assistantDelta);
+          if (ev.thoughtLines.length) options.onThoughtLines?.(ev.thoughtLines);
         }
         if (ev.kind === "done") {
-          options.onDone?.(ev.raw);
+          const raw = ev.raw;
+          const obs = raw.observability;
+          if (options.onThoughtLines && obs && typeof obs === "object") {
+            const tail = formatObservabilityForThoughtPanel(obs as Record<string, unknown>);
+            if (tail.length) options.onThoughtLines(tail);
+          }
+          options.onDone?.(raw);
         }
       }
     }
@@ -80,11 +89,18 @@ export async function streamGraphResponse(options: StreamGraphOptions): Promise<
         const payload = trimmed.slice(5).trim();
         const ev = parseSseDataLine(payload);
         if (!ev) continue;
-        if (ev.kind === "update" && ev.assistantDelta) {
-          options.onAssistantDelta(ev.assistantDelta);
+        if (ev.kind === "update") {
+          if (ev.assistantDelta) options.onAssistantDelta(ev.assistantDelta);
+          if (ev.thoughtLines.length) options.onThoughtLines?.(ev.thoughtLines);
         }
         if (ev.kind === "done") {
-          options.onDone?.(ev.raw);
+          const raw = ev.raw;
+          const obs = raw.observability;
+          if (options.onThoughtLines && obs && typeof obs === "object") {
+            const tail = formatObservabilityForThoughtPanel(obs as Record<string, unknown>);
+            if (tail.length) options.onThoughtLines(tail);
+          }
+          options.onDone?.(raw);
         }
       }
     }

@@ -1,18 +1,23 @@
 import * as React from "react";
-import { Activity, LayoutDashboard, MessageSquare, Shield } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Activity, GitBranch, LayoutDashboard, MessageSquare, Shield } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
+import { ErrorBoundary } from "@/components/error-boundary";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { getPublicEnv } from "@/lib/env";
+import { fetchHealthLive } from "@/lib/govflow-api";
+import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/assistant", label: "Assistant", icon: MessageSquare, end: false },
+  { to: "/workflow", label: "Workflow", icon: GitBranch, end: false },
 ];
 
 function NavItems({ onNavigate }: { onNavigate?: () => void }) {
@@ -45,6 +50,12 @@ export function AppShell() {
   const env = getPublicEnv();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const location = useLocation();
+  const live = useQuery({
+    queryKey: queryKeys.healthLive,
+    queryFn: ({ signal }) => fetchHealthLive(signal),
+    staleTime: 20_000,
+    retry: 1,
+  });
 
   return (
     <div className="flex min-h-dvh w-full bg-background">
@@ -95,14 +106,28 @@ export function AppShell() {
               </p>
             </div>
           </div>
-          <Badge variant="outline" className="hidden sm:inline-flex">
-            API {env.apiBaseUrl.replace(/^https?:\/\//, "")}
-          </Badge>
+          <div className="hidden items-center gap-2 sm:flex">
+            <Badge
+              variant="outline"
+              className={cn(
+                "font-mono text-xs",
+                live.isSuccess && "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",
+                live.isError && "border-destructive/40 text-destructive",
+              )}
+            >
+              {live.isLoading ? "API …" : live.isError ? "API offline" : "API live"}
+            </Badge>
+            <Badge variant="outline" className="font-mono text-xs">
+              {env.apiBaseUrl.replace(/^https?:\/\//, "")}
+            </Badge>
+          </div>
           <Separator orientation="vertical" className="hidden h-6 sm:block" />
           <ModeToggle />
         </header>
         <main className="flex-1 overflow-auto p-4 md:p-6">
-          <Outlet key={location.pathname} />
+          <ErrorBoundary title="Page error">
+            <Outlet key={location.pathname} />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

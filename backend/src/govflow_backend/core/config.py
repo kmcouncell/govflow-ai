@@ -20,11 +20,37 @@ from govflow_backend.exceptions import ConfigurationError
 EnvironmentName = Literal["development", "staging", "production"]
 
 
+def _walk_up_for(start: Path, filename: str) -> Path | None:
+    for directory in [start, *start.parents]:
+        candidate = directory / filename
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _find_env_file(filename: str) -> Path | None:
+    """Resolve `.env` files when the process CWD is not the repository root (e.g. `uv run --directory backend`)."""
+
+    hit = _walk_up_for(Path.cwd().resolve(), filename)
+    if hit is not None:
+        return hit
+    return _walk_up_for(Path(__file__).resolve().parent, filename)
+
+
+def _settings_anchor_directory() -> Path:
+    """Directory used to resolve relative `GOVFLOW_*` paths when `.env` lives at the monorepo root."""
+
+    env_file = _find_env_file(".env")
+    if env_file is not None:
+        return env_file.parent.resolve()
+    return Path.cwd().resolve()
+
+
 def _prime_env_from_dotenv() -> None:
     """Load base `.env` so `GOVFLOW_ENV` exists before optional `.env.<env>` layering."""
 
-    base = Path(".env")
-    if base.is_file():
+    base = _find_env_file(".env")
+    if base is not None:
         load_dotenv(base, override=False)
 
 
@@ -128,7 +154,7 @@ class GovFlowSettings(BaseSettings):
     def resolved_rag_chroma_dir(self) -> Path:
         path = self.rag_chroma_persist_directory.expanduser()
         if not path.is_absolute():
-            path = Path.cwd() / path
+            path = _settings_anchor_directory() / path
         return path.resolve()
 
     @field_validator("log_level")
@@ -141,7 +167,7 @@ class GovFlowSettings(BaseSettings):
     def resolved_config_dir(self) -> Path:
         path = self.config_dir.expanduser()
         if not path.is_absolute():
-            path = Path.cwd() / path
+            path = _settings_anchor_directory() / path
         return path.resolve()
 
     @computed_field  # type: ignore[prop-decorator]
@@ -149,7 +175,7 @@ class GovFlowSettings(BaseSettings):
     def resolved_sample_data_dir(self) -> Path:
         path = self.sample_data_dir.expanduser()
         if not path.is_absolute():
-            path = Path.cwd() / path
+            path = _settings_anchor_directory() / path
         return path.resolve()
 
     @computed_field  # type: ignore[prop-decorator]
@@ -157,7 +183,7 @@ class GovFlowSettings(BaseSettings):
     def resolved_log_dir(self) -> Path:
         path = self.log_dir.expanduser()
         if not path.is_absolute():
-            path = Path.cwd() / path
+            path = _settings_anchor_directory() / path
         return path.resolve()
 
     @computed_field  # type: ignore[prop-decorator]
@@ -189,13 +215,17 @@ class GovFlowSettings(BaseSettings):
 
         env_name = getenv("GOVFLOW_ENV") or getenv("ENVIRONMENT")
         paths: list[str] = []
-        base = Path(".env")
-        if base.is_file():
+        base = _find_env_file(".env")
+        if base is not None:
             paths.append(str(base))
-        if env_name:
-            overlay = Path(f".env.{env_name}")
-            if overlay.is_file():
-                paths.append(str(overlay))
+            if env_name:
+                overlay = base.parent / f".env.{env_name}"
+                if overlay.is_file():
+                    paths.append(str(overlay))
+        elif env_name:
+            overlay_only = _find_env_file(f".env.{env_name}")
+            if overlay_only is not None:
+                paths.append(str(overlay_only))
         dotenv = DotEnvSettingsSource(
             settings_cls,
             env_file=tuple(paths) if paths else None,
