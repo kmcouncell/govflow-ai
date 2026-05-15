@@ -26,6 +26,8 @@ export default defineConfig(({ mode }) => {
         VITE_GOVFLOW_APP_NAME: "GovFlow AI",
         VITE_GOVFLOW_ENV: "test",
         VITE_GOVFLOW_GRAPH_STREAM_PATH: "/v1/graph/stream",
+        VITE_GOVFLOW_FEATURE_ASSISTANT: "true",
+        VITE_GOVFLOW_FEATURE_WORKFLOW: "true",
       },
     },
   };

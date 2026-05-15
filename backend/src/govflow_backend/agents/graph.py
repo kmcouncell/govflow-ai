@@ -52,12 +52,15 @@ def build_supervisor_graph(
     graph = StateGraph(AgentGraphState)
     graph.add_node(
         "supervisor",
-        cast(Any, build_supervisor_node(
-            settings=settings,
-            file_config=file_config,
-            prompts=agents_prompts,
-            chat_model=chat_model,
-        )),
+        cast(
+            Any,
+            build_supervisor_node(
+                settings=settings,
+                file_config=file_config,
+                prompts=agents_prompts,
+                chat_model=chat_model,
+            ),
+        ),
     )
     for key in SPECIALIST_KEYS:
         graph.add_node(

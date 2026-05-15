@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
+import type { LucideIcon } from "lucide-react";
 import { Activity, GitBranch, LayoutDashboard, MessageSquare, Shield } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
@@ -14,16 +15,38 @@ import { fetchHealthLive } from "@/lib/govflow-api";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 
-const nav = [
+const nav: Array<{
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  end: boolean;
+  feature?: "assistant" | "workflow";
+}> = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/assistant", label: "Assistant", icon: MessageSquare, end: false },
-  { to: "/workflow", label: "Workflow", icon: GitBranch, end: false },
+  { to: "/assistant", label: "Assistant", icon: MessageSquare, end: false, feature: "assistant" },
+  { to: "/workflow", label: "Workflow", icon: GitBranch, end: false, feature: "workflow" },
 ];
 
-function NavItems({ onNavigate }: { onNavigate?: () => void }) {
+function NavItems({
+  env,
+  onNavigate,
+}: {
+  env: ReturnType<typeof getPublicEnv>;
+  onNavigate?: () => void;
+}) {
+  const items = nav.filter((item) => {
+    if (item.feature === "assistant") {
+      return env.featureAssistant;
+    }
+    if (item.feature === "workflow") {
+      return env.featureWorkflow;
+    }
+    return true;
+  });
+
   return (
     <nav className="flex flex-col gap-1 px-2">
-      {nav.map(({ to, label, icon: Icon, end }) => (
+      {items.map(({ to, label, icon: Icon, end }) => (
         <NavLink
           key={to}
           to={to}
@@ -70,7 +93,7 @@ export function AppShell() {
           </div>
         </div>
         <div className="flex-1 py-4">
-          <NavItems />
+          <NavItems env={env} />
         </div>
         <div className="border-t p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -93,7 +116,7 @@ export function AppShell() {
                 <SheetTitle className="text-base">{env.appName}</SheetTitle>
               </SheetHeader>
               <div className="py-4">
-                <NavItems onNavigate={() => setMobileOpen(false)} />
+                <NavItems env={env} onNavigate={() => setMobileOpen(false)} />
               </div>
             </SheetContent>
           </Sheet>

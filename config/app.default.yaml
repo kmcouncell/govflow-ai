@@ -26,3 +26,6 @@ app:
 features:
   llm_enabled: false
   graph_persistence_enabled: false
+  # Feature flags: disable HTTP surface area without redeploying code (overridable via GOVFLOW_FEATURE_* env).
+  rag_api_enabled: true
+  graph_api_enabled: true

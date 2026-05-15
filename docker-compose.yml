@@ -58,8 +58,11 @@ services:
         VITE_GOVFLOW_API_BASE_URL: ${VITE_GOVFLOW_API_BASE_URL:-http://localhost:8000}
         VITE_GOVFLOW_APP_NAME: ${VITE_GOVFLOW_APP_NAME:-GovFlow AI}
         VITE_GOVFLOW_ENV: ${VITE_GOVFLOW_ENV:-production}
+        VITE_GOVFLOW_GRAPH_STREAM_PATH: ${VITE_GOVFLOW_GRAPH_STREAM_PATH:-/v1/graph/stream}
+        VITE_GOVFLOW_FEATURE_ASSISTANT: ${VITE_GOVFLOW_FEATURE_ASSISTANT:-true}
+        VITE_GOVFLOW_FEATURE_WORKFLOW: ${VITE_GOVFLOW_FEATURE_WORKFLOW:-true}
     ports:
-      - "${FRONTEND_HOST_PORT:-5173}:80"
+      - "${FRONTEND_HOST_PORT:-5173}:8080"
     depends_on:
       backend:
         condition: service_healthy

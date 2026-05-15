@@ -10,3 +10,5 @@ def test_load_merged_file_config_resolves_paths() -> None:
     cfg = load_merged_file_config(config_dir=root / "config", environment="development")
     assert cfg.app.api.title
     assert cfg.features.llm_enabled is False
+    assert cfg.features.rag_api_enabled is True
+    assert cfg.features.graph_api_enabled is True

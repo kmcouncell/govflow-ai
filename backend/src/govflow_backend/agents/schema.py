@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 AgentName = Literal["workflow_assistant", "research_agent", "document_analyzer"]
 SupervisorRoute = Literal["workflow_assistant", "research_agent", "document_analyzer", "FINISH"]
@@ -74,8 +74,30 @@ class GraphInvokeMessage(BaseModel):
 
 
 class GraphInvokeRequest(BaseModel):
-    messages: list[GraphInvokeMessage] = Field(default_factory=list)
-    thread_id: str | None = None
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": "Summarize agency onboarding steps for a new hire.",
+                        },
+                    ],
+                    "thread_id": "demo-thread-001",
+                }
+            ],
+        },
+    )
+
+    messages: list[GraphInvokeMessage] = Field(
+        default_factory=list,
+        description="Conversation turns in LangChain-compatible roles.",
+    )
+    thread_id: str | None = Field(
+        default=None,
+        description="Optional stable thread identifier for client-side correlation.",
+    )
 
 
 class TelemetryLLMCall(BaseModel):

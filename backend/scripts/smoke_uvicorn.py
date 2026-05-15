@@ -45,7 +45,16 @@ def main() -> None:
     )
     backend = root / "backend"
     p = subprocess.Popen(
-        [sys.executable, "-m", "uvicorn", "govflow_backend.main:app", "--host", "127.0.0.1", "--port", "8055"],
+        [
+            sys.executable,
+            "-m",
+            "uvicorn",
+            "govflow_backend.main:app",
+            "--host",
+            "127.0.0.1",
+            "--port",
+            "8055",
+        ],
         cwd=str(backend),
         env=env,
         stdout=subprocess.DEVNULL,

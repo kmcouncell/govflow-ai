@@ -7,7 +7,7 @@ from time import perf_counter
 from typing import Any
 
 from fastapi import APIRouter, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from govflow_backend.exceptions import ConfigurationError, GuardrailsError
 from govflow_backend.observability.audit import log_ai_audit
@@ -21,13 +21,33 @@ router = APIRouter()
 
 
 class IngestRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [{"reset": False}, {"reset": True}],
+        },
+    )
+
     reset: bool = Field(
         default=False, description="If true, clears the configured vector collection first."
     )
 
 
 class QueryRequest(BaseModel):
-    question: str = Field(min_length=1)
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "question": "What topics are covered in the sample onboarding document?",
+                    "metadata_filter": {"source": "onboarding.md"},
+                    "top_k": 4,
+                },
+            ],
+        },
+    )
+
+    question: str = Field(
+        min_length=1, examples=["What is the refund policy in the sample corpus?"]
+    )
     metadata_filter: dict[str, Any] | None = Field(
         default=None,
         description="Equality filter on chunk metadata (Chroma/pgvector compatible JSON types).",
@@ -42,7 +62,7 @@ def _ra(request: Request) -> ResponsibleAiYaml:
     return ra
 
 
-@router.post("/ingest")
+@router.post("/ingest", summary="Ingest RAG corpus", response_description="Indexed document counts")
 async def rag_ingest(request: Request, body: IngestRequest) -> dict[str, Any]:
     t0 = perf_counter()
     ra = _ra(request)
@@ -62,7 +82,11 @@ async def rag_ingest(request: Request, body: IngestRequest) -> dict[str, Any]:
     return {"documents_loaded": result.documents_loaded, "chunks_indexed": result.chunks_indexed}
 
 
-@router.post("/query")
+@router.post(
+    "/query",
+    summary="Ask a grounded question",
+    response_description="Answer, citations, and latency",
+)
 async def rag_query(request: Request, body: QueryRequest) -> dict[str, Any]:
     t0 = perf_counter()
     ra = _ra(request)

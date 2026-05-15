@@ -29,7 +29,10 @@ def _walk_up_for(start: Path, filename: str) -> Path | None:
 
 
 def _find_env_file(filename: str) -> Path | None:
-    """Resolve `.env` files when the process CWD is not the repository root (e.g. `uv run --directory backend`)."""
+    """Resolve `.env` when the process CWD is not the repository root.
+
+    Typical case: `uv run --directory backend`.
+    """
 
     hit = _walk_up_for(Path.cwd().resolve(), filename)
     if hit is not None:
@@ -38,7 +41,7 @@ def _find_env_file(filename: str) -> Path | None:
 
 
 def _settings_anchor_directory() -> Path:
-    """Directory used to resolve relative `GOVFLOW_*` paths when `.env` lives at the monorepo root."""
+    """Anchor directory for resolving relative `GOVFLOW_*` paths when `.env` is at repo root."""
 
     env_file = _find_env_file(".env")
     if env_file is not None:
@@ -133,6 +136,16 @@ class GovFlowSettings(BaseSettings):
         validation_alias="GOVFLOW_LANGGRAPH_CHECKPOINT_DIR",
     )
     langgraph_thread_id_prefix: str = Field(validation_alias="GOVFLOW_LANGGRAPH_THREAD_ID_PREFIX")
+
+    # --- feature flags (optional; when unset, YAML `features.*_api_enabled` applies) ---
+    feature_rag_api_enabled: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("GOVFLOW_FEATURE_RAG_API_ENABLED"),
+    )
+    feature_graph_api_enabled: bool | None = Field(
+        default=None,
+        validation_alias=AliasChoices("GOVFLOW_FEATURE_GRAPH_API_ENABLED"),
+    )
 
     # --- RAG / vector ---
     rag_vector_backend: str = Field(validation_alias="GOVFLOW_RAG_VECTOR_BACKEND")

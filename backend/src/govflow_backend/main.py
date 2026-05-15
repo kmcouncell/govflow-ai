@@ -5,17 +5,19 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from govflow_backend.agents.loader import load_agents_prompt_config
+from govflow_backend.api.deps import require_graph_api, require_rag_api
 from govflow_backend.api.routers.graph import router as graph_router
 from govflow_backend.api.routers.health import router as health_router
 from govflow_backend.api.routers.rag import router as rag_router
 from govflow_backend.config_loader import load_merged_file_config
 from govflow_backend.config_models import MergedFileConfig
 from govflow_backend.core.config import GovFlowSettings, get_settings
+from govflow_backend.core.feature_flags import resolve_effective_feature_flags
 from govflow_backend.core.logging import (
     CorrelationIdMiddleware,
     HttpAccessLogMiddleware,
@@ -36,6 +38,47 @@ from govflow_backend.graph.workflow import build_stub_graph
 from govflow_backend.rag.factories import build_rag_runtime
 from govflow_backend.rag.yaml_loader import load_rag_config
 from govflow_backend.responsible_ai.loader import load_responsible_ai_config
+
+
+def _build_openapi_description(*, settings: GovFlowSettings, file_config: MergedFileConfig) -> str:
+    hdr = settings.correlation_id_request_header
+    desc = file_config.app.description.strip()
+    return f"""{desc}
+
+## Operations notes
+
+- **Correlation IDs**: send `{hdr}`; the API echoes it on responses for log correlation.
+- **Responsible AI**: user questions, streaming aggregates, and assistant output are evaluated
+  against the configured policy pack under `config/responsible_ai.*.yaml`.
+
+## Representative requests
+
+### `POST /v1/rag/query`
+
+```json
+{{
+  "question": "What is covered in the onboarding sample document?",
+  "top_k": 4
+}}
+```
+
+### `POST /v1/graph/invoke`
+
+```json
+{{
+  "messages": [{{"role": "user", "content": "Draft a concise status update."}}],
+  "thread_id": "demo-thread-001"
+}}
+```
+
+### `POST /v1/rag/ingest`
+
+```json
+{{
+  "reset": false
+}}
+```
+"""
 
 
 def register_exception_handlers(application: FastAPI) -> None:
@@ -113,12 +156,31 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title=file_config.app.api.title,
         version=file_config.app.api.version,
+        description=_build_openapi_description(settings=settings, file_config=file_config),
         openapi_url=file_config.app.api.openapi_url if file_config.app.api.docs_enabled else None,
         lifespan=lifespan,
         root_path=settings.backend_root_path or "",
+        openapi_tags=[
+            {
+                "name": "health",
+                "description": "Liveness/readiness probes and request correlation headers.",
+            },
+            {
+                "name": "graph",
+                "description": "LangGraph supervisor demo, synchronous invoke, and SSE streaming.",
+            },
+            {
+                "name": "rag",
+                "description": "RAG ingestion and grounded QA over the configured vector store.",
+            },
+        ],
     )
     application.state.settings = settings
     application.state.file_config = file_config
+    application.state.effective_feature_flags = resolve_effective_feature_flags(
+        settings,
+        file_config.features,
+    )
     application.state.rag_yaml = load_rag_config(
         config_dir=settings.resolved_config_dir,
         environment=settings.environment,
@@ -145,8 +207,18 @@ def create_app() -> FastAPI:
     application.add_middleware(RateLimitMiddleware)
 
     application.include_router(health_router, prefix="/health", tags=["health"])
-    application.include_router(graph_router, prefix="/v1/graph", tags=["graph"])
-    application.include_router(rag_router, prefix="/v1/rag", tags=["rag"])
+    application.include_router(
+        graph_router,
+        prefix="/v1/graph",
+        tags=["graph"],
+        dependencies=[Depends(require_graph_api)],
+    )
+    application.include_router(
+        rag_router,
+        prefix="/v1/rag",
+        tags=["rag"],
+        dependencies=[Depends(require_rag_api)],
+    )
 
     return application
 

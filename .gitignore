@@ -43,6 +43,7 @@ logs/
 
 # RAG / local vector test data
 backend/.pytest_chroma_data/
+data/chroma/
 
 # Misc
 *.swp

@@ -36,6 +36,8 @@ class AppSectionModel(BaseModel):
 class FeaturesModel(BaseModel):
     llm_enabled: bool
     graph_persistence_enabled: bool
+    rag_api_enabled: bool = True
+    graph_api_enabled: bool = True
 
 
 class AppYamlRoot(BaseModel):
