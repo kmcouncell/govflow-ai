@@ -35,7 +35,17 @@ def _install_test_env() -> None:
     os.environ["GOVFLOW_SECURITY_ENABLE_CONTENT_TYPE_OPTIONS"] = "true"
     os.environ["GOVFLOW_SECURITY_REFERRER_POLICY"] = "strict-origin-when-cross-origin"
     os.environ["GOVFLOW_SECURITY_PERMISSIONS_POLICY"] = ""
+    os.environ["GOVFLOW_RAG_VECTOR_BACKEND"] = "chroma"
+    os.environ["GOVFLOW_RAG_CHROMA_PERSIST_DIRECTORY"] = str(_REPO_ROOT / "backend" / ".pytest_chroma_data")
+    os.environ["GOVFLOW_RAG_PG_DSN"] = ""
+    os.environ["GOVFLOW_RAG_COLLECTION_NAME"] = "pytest-rag"
+    os.environ["GOVFLOW_RAG_EMBEDDING_MODEL"] = "text-embedding-3-small"
+    os.environ["GOVFLOW_RAG_EMBEDDING_DIMENSIONS"] = "256"
+    os.environ["GOVFLOW_RAG_USE_FAKE_EMBEDDINGS"] = "true"
+    os.environ["GOVFLOW_RAG_SOURCE_DIR"] = str(_REPO_ROOT / "sample_data" / "rag_docs")
+    os.environ["GOVFLOW_RAG_SINGLE_FILE"] = ""
     os.environ["GOVFLOW_LANGGRAPH_THREAD_ID_PREFIX"] = "test"
+    Path(os.environ["GOVFLOW_RAG_CHROMA_PERSIST_DIRECTORY"]).mkdir(parents=True, exist_ok=True)
 
 
 _install_test_env()

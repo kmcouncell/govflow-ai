@@ -19,6 +19,6 @@ COPY --from=deps /app/backend/.venv /app/backend/.venv
 COPY backend /app/backend
 COPY config /app/config
 COPY sample_data /app/sample_data
-RUN mkdir -p /app/logs
+RUN mkdir -p /app/logs /app/data/chroma
 EXPOSE 8000
 CMD ["sh", "-c", "cd /app/backend && uvicorn govflow_backend.main:app --host ${GOVFLOW_BACKEND_HOST} --port ${GOVFLOW_BACKEND_PORT}"]

@@ -11,3 +11,7 @@ class ConfigurationError(GovFlowError):
 
 class ExternalServiceError(GovFlowError):
     """Raised when an optional external dependency fails; callers may degrade gracefully."""
+
+
+class RagError(Exception):
+    """Raised for RAG ingestion, retrieval, or configuration failures."""

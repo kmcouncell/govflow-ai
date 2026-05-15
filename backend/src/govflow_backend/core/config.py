@@ -108,6 +108,29 @@ class GovFlowSettings(BaseSettings):
     )
     langgraph_thread_id_prefix: str = Field(validation_alias="GOVFLOW_LANGGRAPH_THREAD_ID_PREFIX")
 
+    # --- RAG / vector ---
+    rag_vector_backend: str = Field(validation_alias="GOVFLOW_RAG_VECTOR_BACKEND")
+    rag_chroma_persist_directory: Path = Field(
+        validation_alias="GOVFLOW_RAG_CHROMA_PERSIST_DIRECTORY",
+    )
+    rag_pg_dsn: str = Field(validation_alias="GOVFLOW_RAG_PG_DSN")
+    rag_collection_name: str = Field(validation_alias="GOVFLOW_RAG_COLLECTION_NAME")
+    rag_embedding_model: str = Field(validation_alias="GOVFLOW_RAG_EMBEDDING_MODEL")
+    rag_embedding_dimensions: int = Field(
+        validation_alias="GOVFLOW_RAG_EMBEDDING_DIMENSIONS",
+        ge=8,
+        le=8192,
+    )
+    rag_use_fake_embeddings: bool = Field(validation_alias="GOVFLOW_RAG_USE_FAKE_EMBEDDINGS")
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def resolved_rag_chroma_dir(self) -> Path:
+        path = self.rag_chroma_persist_directory.expanduser()
+        if not path.is_absolute():
+            path = Path.cwd() / path
+        return path.resolve()
+
     @field_validator("log_level")
     @classmethod
     def _upper_log_level(cls, value: str) -> str:

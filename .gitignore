@@ -41,6 +41,9 @@ Thumbs.db
 *.log
 logs/
 
+# RAG / local vector test data
+backend/.pytest_chroma_data/
+
 # Misc
 *.swp
 .cache/

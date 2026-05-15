@@ -1,0 +1,5 @@
+qa:
+  mode: extractive
+
+retrieval:
+  default_top_k: 5

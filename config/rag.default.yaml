@@ -1,0 +1,52 @@
+# RAG pipeline defaults (non-secret). Operational values also come from environment — see `.env.example`.
+
+chunking:
+  strategy: recursive_character
+  chunk_size: 512
+  chunk_overlap: 64
+  # Optional explicit separators; null uses LangChain defaults for the strategy.
+  separators: null
+
+embeddings:
+  # Logical provider id; implementation is bound in code to env-backed credentials.
+  provider: openai
+
+retrieval:
+  default_top_k: 8
+  score_threshold: null
+  max_chunks_for_prompt: 6
+
+ingestion:
+  loaders:
+    - type: markdown_directory
+      path_env_key: GOVFLOW_RAG_SOURCE_DIR
+      glob_pattern: "**/*.md"
+    - type: text_file
+      path_env_key: GOVFLOW_RAG_SINGLE_FILE
+
+qa:
+  mode: extractive
+  min_grounding_score: 0.12
+  require_citation_brackets: true
+
+prompts:
+  generative_system: |
+    You are a government workflow assistant. Answer only from the provided context.
+    Every factual claim must end with citation markers like [1] referring to the excerpt index.
+    If the context is insufficient, say you do not know.
+  generative_user: |
+    Context excerpts (each block is numbered for citations):
+    {context_excerpts}
+
+    Question: {question}
+
+    Produce a concise answer with bracketed citations [n] aligned to the excerpt numbers.
+  hallucination_check_user: |
+    Candidate answer:
+    {answer}
+
+    Allowed source text (compressed):
+    {sources_compressed}
+
+    Reply with exactly one float in [0,1] meaning groundedness (overlap of answer with sources).
+    No other text.

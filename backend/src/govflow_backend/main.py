@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 
 from govflow_backend.api.routers.graph import router as graph_router
 from govflow_backend.api.routers.health import router as health_router
+from govflow_backend.api.routers.rag import router as rag_router
 from govflow_backend.config_loader import load_merged_file_config
 from govflow_backend.config_models import MergedFileConfig
 from govflow_backend.core.config import GovFlowSettings, get_settings
@@ -20,11 +21,18 @@ from govflow_backend.core.logging import (
     setup_logging,
 )
 from govflow_backend.core.security import install_security_middleware
-from govflow_backend.exceptions import ConfigurationError, ExternalServiceError, GovFlowError
+from govflow_backend.exceptions import ConfigurationError, ExternalServiceError, GovFlowError, RagError
 from govflow_backend.graph.workflow import build_stub_graph
+from govflow_backend.rag.factories import build_rag_runtime
+from govflow_backend.rag.yaml_loader import load_rag_config
 
 
 def register_exception_handlers(application: FastAPI) -> None:
+    @application.exception_handler(RagError)
+    async def _rag_error(_: Request, exc: RagError) -> JSONResponse:
+        get_logger(__name__).warning("rag_error", error=str(exc))
+        return JSONResponse(status_code=400, content={"detail": "rag_error", "message": str(exc)})
+
     @application.exception_handler(ConfigurationError)
     async def _configuration_error(_: Request, exc: ConfigurationError) -> JSONResponse:
         get_logger(__name__).exception("configuration_error", error=str(exc))
@@ -63,6 +71,7 @@ async def lifespan(app: FastAPI):
         config_dir=str(settings.resolved_config_dir),
     )
     app.state.graph = build_stub_graph(settings, file_config)
+    app.state.rag_runtime = build_rag_runtime(settings, app.state.rag_yaml)
     yield
     log.info("shutdown_complete")
 
@@ -83,6 +92,10 @@ def create_app() -> FastAPI:
     )
     application.state.settings = settings
     application.state.file_config = file_config
+    application.state.rag_yaml = load_rag_config(
+        config_dir=settings.resolved_config_dir,
+        environment=settings.environment,
+    )
 
     register_exception_handlers(application)
 
@@ -100,6 +113,7 @@ def create_app() -> FastAPI:
 
     application.include_router(health_router, prefix="/health", tags=["health"])
     application.include_router(graph_router, prefix="/v1/graph", tags=["graph"])
+    application.include_router(rag_router, prefix="/v1/rag", tags=["rag"])
 
     return application
 
