@@ -22,6 +22,8 @@ app:
   graph:
     default_thread_ttl_seconds: 3600
     max_steps: 50
+  llm:
+    default_chat_model: "gpt-4o-mini"
 
 features:
   llm_enabled: false

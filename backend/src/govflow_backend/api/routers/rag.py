@@ -9,7 +9,8 @@ from typing import Any
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from govflow_backend.exceptions import ConfigurationError, GuardrailsError
+from govflow_backend.core.logging import get_logger
+from govflow_backend.exceptions import ConfigurationError, GuardrailsError, RagError
 from govflow_backend.observability.audit import log_ai_audit
 from govflow_backend.responsible_ai.guardrails import (
     apply_text_guardrails,
@@ -18,6 +19,7 @@ from govflow_backend.responsible_ai.guardrails import (
 from govflow_backend.responsible_ai.schema import ResponsibleAiYaml
 
 router = APIRouter()
+log = get_logger(__name__)
 
 
 class IngestRequest(BaseModel):
@@ -67,7 +69,11 @@ async def rag_ingest(request: Request, body: IngestRequest) -> dict[str, Any]:
     t0 = perf_counter()
     ra = _ra(request)
     runtime = request.app.state.rag_runtime
-    result = await asyncio.to_thread(lambda: runtime.ingestion.ingest(reset=body.reset))
+    try:
+        result = await asyncio.to_thread(lambda: runtime.ingestion.ingest(reset=body.reset))
+    except RagError as exc:
+        log.warning("rag_ingest_failed", error=str(exc), reset=body.reset)
+        raise
     elapsed_ms = (perf_counter() - t0) * 1000.0
     log_ai_audit(
         request=request,
@@ -95,13 +101,17 @@ async def rag_query(request: Request, body: QueryRequest) -> dict[str, Any]:
         raise GuardrailsError(iv.block_reason or "Question blocked by guardrails.", flags=iv.flags)
 
     runtime = request.app.state.rag_runtime
-    qa = await asyncio.to_thread(
-        lambda: runtime.qa.answer(
-            question=body.question,
-            metadata_filter=body.metadata_filter,
-            top_k=body.top_k,
-        ),
-    )
+    try:
+        qa = await asyncio.to_thread(
+            lambda: runtime.qa.answer(
+                question=body.question,
+                metadata_filter=body.metadata_filter,
+                top_k=body.top_k,
+            ),
+        )
+    except RagError as exc:
+        log.warning("rag_query_failed", error=str(exc), question_chars=len(body.question))
+        raise
     payload = qa.model_dump()
     answer = str(payload.get("answer", ""))
     gr = apply_text_guardrails(answer, ra.guardrails)

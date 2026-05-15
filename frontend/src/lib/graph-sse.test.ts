@@ -54,4 +54,12 @@ describe("graph-sse", () => {
       expect(ev.thoughtLines.length).toBeGreaterThan(0);
     }
   });
+
+  it("parses stream error events", () => {
+    const ev = parseSseDataLine(JSON.stringify({ error: true, detail: "boom" }));
+    expect(ev?.kind).toBe("error");
+    if (ev?.kind === "error") {
+      expect(ev.message).toBe("boom");
+    }
+  });
 });

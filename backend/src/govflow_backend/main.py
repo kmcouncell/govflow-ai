@@ -141,7 +141,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         environment=settings.environment,
     )
     app.state.graph = build_stub_graph(settings, file_config, app.state.agents_prompts)
-    app.state.rag_runtime = build_rag_runtime(settings, app.state.rag_yaml)
+    app.state.rag_runtime = build_rag_runtime(settings, app.state.rag_yaml, file_config)
     yield
     log.info("shutdown_complete")
 

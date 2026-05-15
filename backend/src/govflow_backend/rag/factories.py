@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from govflow_backend.config_models import MergedFileConfig
 from govflow_backend.core.config import GovFlowSettings
 from govflow_backend.exceptions import ConfigurationError
 from govflow_backend.rag.embeddings import EmbeddingClient, build_embedding_client
@@ -45,13 +46,17 @@ class RagRuntime:
     qa: QaService
 
 
-def build_rag_runtime(settings: GovFlowSettings, rag_yaml: RagYamlRoot) -> RagRuntime:
+def build_rag_runtime(
+    settings: GovFlowSettings, rag_yaml: RagYamlRoot, file_config: MergedFileConfig
+) -> RagRuntime:
     prefer_fake = settings.rag_use_fake_embeddings or rag_yaml.embeddings.provider == "fake"
     embedder = build_embedding_client(settings, prefer_fake=prefer_fake)
     store = build_vector_store(settings)
     retriever = Retriever(embedder=embedder, store=store, rag_yaml=rag_yaml)
     ingestion = IngestionService(rag_yaml=rag_yaml, embedder=embedder, store=store)
-    qa = QaService(settings=settings, rag_yaml=rag_yaml, retriever=retriever)
+    qa = QaService(
+        settings=settings, rag_yaml=rag_yaml, retriever=retriever, file_config=file_config
+    )
     return RagRuntime(
         settings=settings,
         rag_yaml=rag_yaml,

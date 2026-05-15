@@ -19,7 +19,11 @@ from langgraph.config import get_config
 
 from govflow_backend.agents.builtin_tools import tools_for_agent
 from govflow_backend.agents.observability import ObservabilityRun, Stopwatch
-from govflow_backend.agents.schema import AgentsPromptYaml, SupervisorRoutingDecision
+from govflow_backend.agents.schema import (
+    AgentsPromptYaml,
+    SupervisorRoute,
+    SupervisorRoutingDecision,
+)
 from govflow_backend.agents.state import AgentGraphState
 from govflow_backend.agents.tooling import invoke_tool_with_retries
 from govflow_backend.config_models import MergedFileConfig
@@ -54,18 +58,24 @@ def _last_human_text(messages: Sequence[BaseMessage]) -> str:
 
 def _degraded_route(
     messages: Sequence[BaseMessage],
-) -> Literal["workflow_assistant", "research_agent", "document_analyzer", "FINISH"]:
+    prompts: AgentsPromptYaml,
+) -> SupervisorRoute:
+    """Deterministic routing when the LLM supervisor is unavailable."""
+
     if not messages:
-        return "workflow_assistant"
+        return prompts.defaults.degraded_routing.default_route
     last = messages[-1]
     if isinstance(last, AIMessage):
         return "FINISH"
     text = _last_human_text(messages).lower()
-    if "research" in text:
-        return "research_agent"
-    if "document" in text or "analyze" in text or "pdf" in text:
-        return "document_analyzer"
-    return "workflow_assistant"
+    dr = prompts.defaults.degraded_routing
+    for sub in dr.research_substrings:
+        if sub.lower() in text:
+            return "research_agent"
+    for sub in dr.document_substrings:
+        if sub.lower() in text:
+            return "document_analyzer"
+    return dr.default_route
 
 
 def _usage_from_message(msg: AIMessage) -> tuple[int | None, int | None, int | None]:
@@ -101,7 +111,7 @@ def build_supervisor_node(
         )
 
         if not llm_ready:
-            nxt = _degraded_route(messages)
+            nxt = _degraded_route(messages, prompts)
             log.info("supervisor_degraded_route", next=nxt, turns=turns)
             return {"supervisor_turns": 1, "last_route": nxt}
 

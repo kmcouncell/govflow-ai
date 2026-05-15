@@ -12,6 +12,7 @@ from govflow_backend.agents.schema import AgentsPromptYaml
 from govflow_backend.agents.state import AgentGraphState
 from govflow_backend.config_models import MergedFileConfig
 from govflow_backend.core.config import GovFlowSettings
+from govflow_backend.core.openai_model import resolve_openai_chat_model
 
 SPECIALIST_KEYS: tuple[
     Literal["workflow_assistant", "research_agent", "document_analyzer"],
@@ -19,10 +20,12 @@ SPECIALIST_KEYS: tuple[
 ] = ("workflow_assistant", "research_agent", "document_analyzer")
 
 
-def _make_chat_model(settings: GovFlowSettings, prompts: AgentsPromptYaml) -> ChatOpenAI | None:
+def _make_chat_model(
+    settings: GovFlowSettings, prompts: AgentsPromptYaml, file_config: MergedFileConfig
+) -> ChatOpenAI | None:
     if not settings.openai_api_key:
         return None
-    model_name = settings.openai_model or "gpt-4o-mini"
+    model_name = resolve_openai_chat_model(settings, file_config)
     kwargs: dict[str, Any] = {
         "model": model_name,
         "api_key": settings.openai_api_key,
@@ -47,7 +50,7 @@ def build_supervisor_graph(
 ) -> Any:
     chat_model: ChatOpenAI | None = None
     if file_config.features.llm_enabled and settings.openai_api_key:
-        chat_model = _make_chat_model(settings, agents_prompts)
+        chat_model = _make_chat_model(settings, agents_prompts, file_config)
 
     graph = StateGraph(AgentGraphState)
     graph.add_node(

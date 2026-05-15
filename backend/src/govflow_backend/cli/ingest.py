@@ -33,7 +33,7 @@ def ingest_run(
     rag_yaml = load_rag_config(
         config_dir=settings.resolved_config_dir, environment=settings.environment
     )
-    runtime = build_rag_runtime(settings, rag_yaml)
+    runtime = build_rag_runtime(settings, rag_yaml, file_cfg)
     result = runtime.ingestion.ingest(reset=reset)
     msg = (
         f"Ingestion complete: documents_loaded={result.documents_loaded} "

@@ -116,6 +116,7 @@ export function formatObservabilityForThoughtPanel(obs: Record<string, unknown>)
 export type GraphStreamEvent =
   | { kind: "update"; assistantDelta: string; thoughtLines: string[]; raw: Record<string, unknown> }
   | { kind: "done"; raw: Record<string, unknown> }
+  | { kind: "error"; message: string; raw: Record<string, unknown> }
   | { kind: "unknown"; raw: Record<string, unknown> };
 
 export function parseSseDataLine(jsonText: string): GraphStreamEvent | null {
@@ -124,6 +125,10 @@ export function parseSseDataLine(jsonText: string): GraphStreamEvent | null {
     parsed = JSON.parse(jsonText) as Record<string, unknown>;
   } catch {
     return null;
+  }
+  if (parsed.error === true) {
+    const detail = typeof parsed.detail === "string" ? parsed.detail : "stream_error";
+    return { kind: "error", message: detail, raw: parsed };
   }
   if (parsed.done === true) return { kind: "done", raw: parsed };
   if ("updates" in parsed) {

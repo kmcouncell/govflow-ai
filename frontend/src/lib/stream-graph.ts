@@ -1,5 +1,5 @@
 import { getPublicEnv } from "@/lib/env";
-import { formatObservabilityForThoughtPanel, parseSseDataLine } from "@/lib/graph-sse";
+import { formatObservabilityForThoughtPanel, parseSseDataLine, type GraphStreamEvent } from "@/lib/graph-sse";
 import { joinApiUrl } from "@/lib/url";
 
 export type GraphInvokeMessage = {
@@ -18,6 +18,25 @@ export type StreamGraphOptions = {
   /** Incremental routing / agent signals extracted from each SSE update. */
   onThoughtLines?: (lines: string[]) => void;
 };
+
+function dispatchGraphStreamEvent(ev: GraphStreamEvent, options: StreamGraphOptions): void {
+  if (ev.kind === "error") {
+    throw new Error(ev.message);
+  }
+  if (ev.kind === "update") {
+    if (ev.assistantDelta) options.onAssistantDelta(ev.assistantDelta);
+    if (ev.thoughtLines.length) options.onThoughtLines?.(ev.thoughtLines);
+  }
+  if (ev.kind === "done") {
+    const raw = ev.raw;
+    const obs = raw.observability;
+    if (options.onThoughtLines && obs && typeof obs === "object") {
+      const tail = formatObservabilityForThoughtPanel(obs as Record<string, unknown>);
+      if (tail.length) options.onThoughtLines(tail);
+    }
+    options.onDone?.(raw);
+  }
+}
 
 function parseSseBlocks(buffer: string): { events: string[]; rest: string } {
   const parts = buffer.split("\n\n");
@@ -65,19 +84,7 @@ export async function streamGraphResponse(options: StreamGraphOptions): Promise<
         if (payload === "[DONE]") continue;
         const ev = parseSseDataLine(payload);
         if (!ev) continue;
-        if (ev.kind === "update") {
-          if (ev.assistantDelta) options.onAssistantDelta(ev.assistantDelta);
-          if (ev.thoughtLines.length) options.onThoughtLines?.(ev.thoughtLines);
-        }
-        if (ev.kind === "done") {
-          const raw = ev.raw;
-          const obs = raw.observability;
-          if (options.onThoughtLines && obs && typeof obs === "object") {
-            const tail = formatObservabilityForThoughtPanel(obs as Record<string, unknown>);
-            if (tail.length) options.onThoughtLines(tail);
-          }
-          options.onDone?.(raw);
-        }
+        dispatchGraphStreamEvent(ev, options);
       }
     }
   }
@@ -89,19 +96,7 @@ export async function streamGraphResponse(options: StreamGraphOptions): Promise<
         const payload = trimmed.slice(5).trim();
         const ev = parseSseDataLine(payload);
         if (!ev) continue;
-        if (ev.kind === "update") {
-          if (ev.assistantDelta) options.onAssistantDelta(ev.assistantDelta);
-          if (ev.thoughtLines.length) options.onThoughtLines?.(ev.thoughtLines);
-        }
-        if (ev.kind === "done") {
-          const raw = ev.raw;
-          const obs = raw.observability;
-          if (options.onThoughtLines && obs && typeof obs === "object") {
-            const tail = formatObservabilityForThoughtPanel(obs as Record<string, unknown>);
-            if (tail.length) options.onThoughtLines(tail);
-          }
-          options.onDone?.(raw);
-        }
+        dispatchGraphStreamEvent(ev, options);
       }
     }
   }
@@ -113,8 +108,8 @@ export async function streamMockAssistantResponse(
   signal: AbortSignal,
   onChunk: (t: string) => void,
 ): Promise<void> {
-  const base =
-    "This is an offline preview stream. Connect the GovFlow API to receive live graph updates.\n\nYou asked: ";
+  const env = getPublicEnv();
+  const base = `This is an offline preview stream. Connect ${env.appName} at ${env.apiBaseUrl} for live graph updates.\n\nYou asked: `;
   const tail = `\n\n(Thread: ${userText.length} characters.)`;
   const text = `${base}${userText}${tail}`;
   const chunkSize = 8;

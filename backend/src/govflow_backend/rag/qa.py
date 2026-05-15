@@ -8,7 +8,9 @@ from typing import Any
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
+from govflow_backend.config_models import MergedFileConfig
 from govflow_backend.core.config import GovFlowSettings
+from govflow_backend.core.openai_model import resolve_openai_chat_model
 from govflow_backend.exceptions import RagError
 from govflow_backend.rag.guardrails import (
     citation_indices,
@@ -36,11 +38,17 @@ class QaResult:
 
 class QaService:
     def __init__(
-        self, *, settings: GovFlowSettings, rag_yaml: RagYamlRoot, retriever: Retriever
+        self,
+        *,
+        settings: GovFlowSettings,
+        rag_yaml: RagYamlRoot,
+        retriever: Retriever,
+        file_config: MergedFileConfig,
     ) -> None:
         self._settings = settings
         self._rag_yaml = rag_yaml
         self._retriever = retriever
+        self._file_config = file_config
 
     def answer(
         self,
@@ -94,7 +102,7 @@ class QaService:
         )
 
         kwargs: dict[str, Any] = {
-            "model": self._settings.openai_model or "gpt-4o-mini",
+            "model": resolve_openai_chat_model(self._settings, self._file_config),
             "temperature": 0.0,
             "api_key": self._settings.openai_api_key,
         }

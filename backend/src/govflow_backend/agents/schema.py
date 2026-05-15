@@ -16,11 +16,29 @@ class ToolRetryDefaults(BaseModel):
     backoff_multiplier: float = Field(ge=1.0, le=10.0)
 
 
+class DegradedRoutingConfig(BaseModel):
+    """Keyword heuristics when the LLM path is unavailable (degraded supervisor)."""
+
+    research_substrings: list[str] = Field(
+        default_factory=lambda: ["research"],
+        description="Substrings (case-insensitive); first match routes to research_agent.",
+    )
+    document_substrings: list[str] = Field(
+        default_factory=lambda: ["document", "analyze", "pdf"],
+        description="Case-insensitive substrings; evaluated after research_substrings.",
+    )
+    default_route: AgentName = Field(
+        default="workflow_assistant",
+        description="When no keyword matches, route to this specialist.",
+    )
+
+
 class AgentsDefaults(BaseModel):
     model_temperature: float = Field(ge=0.0, le=2.0)
     max_tool_iterations_per_specialist: int = Field(ge=1, le=50)
     max_supervisor_turns: int = Field(ge=1, le=100)
     tool_retry: ToolRetryDefaults
+    degraded_routing: DegradedRoutingConfig = Field(default_factory=DegradedRoutingConfig)
 
 
 class ObservabilityPricing(BaseModel):

@@ -89,13 +89,17 @@ async def graph_demo(request: Request) -> dict[str, Any]:
     prompts = request.app.state.agents_prompts
     telemetry = ObservabilityRun()
     file_config = request.app.state.file_config
-    result = await graph.ainvoke(
-        {"messages": [], "supervisor_turns": 0},
-        config={
-            "configurable": {"telemetry": telemetry},
-            "recursion_limit": file_config.app.graph.max_steps,
-        },
-    )
+    try:
+        result = await graph.ainvoke(
+            {"messages": [], "supervisor_turns": 0},
+            config={
+                "configurable": {"telemetry": telemetry},
+                "recursion_limit": file_config.app.graph.max_steps,
+            },
+        )
+    except Exception as exc:
+        log.exception("graph_demo_failed", error=str(exc))
+        raise
     obs = telemetry.summarize(prompts)
     raw_messages = messages_to_jsonable(result.get("messages") or [])
     checked, gr_summary = apply_guardrails_to_assistant_messages(raw_messages, ra.guardrails)
@@ -145,13 +149,17 @@ async def graph_invoke(request: Request, body: GraphInvokeRequest) -> GraphInvok
         "messages": messages_from_request(body.messages),
         "supervisor_turns": 0,
     }
-    out = await graph.ainvoke(
-        state,
-        config={
-            "configurable": {"telemetry": telemetry},
-            "recursion_limit": file_config.app.graph.max_steps,
-        },
-    )
+    try:
+        out = await graph.ainvoke(
+            state,
+            config={
+                "configurable": {"telemetry": telemetry},
+                "recursion_limit": file_config.app.graph.max_steps,
+            },
+        )
+    except Exception as exc:
+        log.exception("graph_invoke_failed", error=str(exc))
+        raise
     obs = telemetry.summarize(prompts)
     raw_messages = messages_to_jsonable(out.get("messages") or [])
     checked, gr_summary = apply_guardrails_to_assistant_messages(raw_messages, ra.guardrails)
@@ -197,13 +205,21 @@ async def _stream_updates(
 ) -> AsyncIterator[str]:
     t0 = perf_counter()
     assistant_parts: list[str] = []
+    stream_error: str | None = None
     try:
         async for chunk in graph.astream(state, config=config, stream_mode="updates"):
             assistant_parts.extend(_assistant_texts_from_chunk(chunk))
             payload = json.dumps({"updates": chunk}, default=_json_default)
             yield f"data: {payload}\n\n"
+    except Exception as exc:
+        stream_error = str(exc)
+        log.exception("graph_stream_astream_failed", error=stream_error)
+        err_payload = json.dumps({"error": True, "detail": stream_error}, default=_json_default)
+        yield f"data: {err_payload}\n\n"
     finally:
         summary = telemetry.summarize(prompts)
+        if stream_error is not None:
+            summary = {**summary, "stream_error": stream_error}
         joined = "\n".join(assistant_parts)
         stream_gr: dict[str, Any]
         if joined.strip():

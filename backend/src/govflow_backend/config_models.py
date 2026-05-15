@@ -25,12 +25,23 @@ class GraphYamlConfig(BaseModel):
     max_steps: int = Field(ge=1)
 
 
+class LlmYamlConfig(BaseModel):
+    """Defaults when `GOVFLOW_OPENAI_MODEL` is unset (non-secret; tune per environment)."""
+
+    default_chat_model: str = Field(
+        min_length=1,
+        max_length=128,
+        description="Chat model id when GOVFLOW_OPENAI_MODEL is unset.",
+    )
+
+
 class AppSectionModel(BaseModel):
     name: str
     description: str
     api: ApiConfigModel
     cors: CorsConfigModel
     graph: GraphYamlConfig
+    llm: LlmYamlConfig
 
 
 class FeaturesModel(BaseModel):
