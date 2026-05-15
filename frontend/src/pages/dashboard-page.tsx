@@ -161,8 +161,8 @@ export function DashboardPage() {
           ) : null}
         </div>
         <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground md:text-base">
-          Live health probes, an optional LangGraph snapshot, and a retrieval check against the indexed corpus. All
-          panels degrade gracefully when the API is offline.
+          Health and readiness for the GovFlow API, an optional LangGraph snapshot, and a quick retrieval check against
+          the indexed Markdown corpus. Panels stay usable when the API is offline.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button

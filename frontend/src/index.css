@@ -53,6 +53,10 @@
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply min-h-dvh bg-background text-foreground antialiased;
     font-feature-settings: "kern" 1, "liga" 1;

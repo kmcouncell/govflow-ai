@@ -1,13 +1,13 @@
 # Sample data
 
-Non-sensitive **synthetic** federal-style materials for demos, RAG grounding, and local testing.
+Non-sensitive **synthetic** federal-style materials for demos, RAG grounding, and local testing. Nothing in this directory is official government content.
 
 ## Layout
 
 | Path | Format | Purpose |
 | --- | --- | --- |
 | `rag_docs/` | Markdown (`**/*.md`) | Default ingestion corpus (`GOVFLOW_RAG_SOURCE_DIR`); includes `policies/`, `manuals/`, and `workflows/` |
-| `policies/pdf/` | PDF | Companion policy excerpts for UI/download demos (not loaded by default Markdown RAG loader) |
+| `policies/pdf/` | PDF (5 files) | Short companion policy excerpts for download or UI demos; not loaded by the default Markdown-only RAG loader |
 
 ## Regenerating PDFs
 

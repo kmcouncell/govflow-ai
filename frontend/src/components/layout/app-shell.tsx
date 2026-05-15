@@ -1,7 +1,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { LucideIcon } from "lucide-react";
-import { Activity, GitBranch, LayoutDashboard, Loader2, MessageSquare, Shield } from "lucide-react";
+import { Activity, GitBranch, LayoutDashboard, Loader2, Menu, MessageSquare, Shield } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -52,9 +52,9 @@ function NavItems({
           to={to}
           end={end}
           onClick={onNavigate}
-            className={({ isActive }) =>
+          className={({ isActive }) =>
             cn(
-              "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+              "flex items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
               isActive
                 ? "bg-primary/12 text-primary shadow-sm dark:bg-primary/20"
                 : "text-muted-foreground hover:bg-muted/80 hover:text-foreground",
@@ -107,8 +107,8 @@ export function AppShell() {
         <header className="sticky top-0 z-40 flex h-16 items-center gap-3 border-b border-border/80 bg-background/90 px-4 shadow-sm backdrop-blur-md md:px-6">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="sm" className="md:hidden" aria-label="Open menu">
-                <LayoutDashboard className="h-4 w-4" />
+              <Button variant="outline" size="sm" className="md:hidden" aria-label="Open navigation menu">
+                <Menu className="h-4 w-4" />
               </Button>
             </SheetTrigger>
             <SheetContent className="w-64 border-r p-0">
