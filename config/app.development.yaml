@@ -1,0 +1,8 @@
+# Development overlays (loaded after default YAML for the same environment key)
+
+app:
+  api:
+    docs_enabled: true
+
+features:
+  llm_enabled: false

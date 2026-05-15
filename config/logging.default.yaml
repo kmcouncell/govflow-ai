@@ -1,0 +1,6 @@
+# Logging defaults — structured fields; level/json overridden by env where set.
+
+logging:
+  service_name: "govflow-backend"
+  instrument_uvicorn_access: true
+  exc_info_on_error: true

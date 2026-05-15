@@ -1,0 +1,6 @@
+app:
+  api:
+    docs_enabled: true
+
+features:
+  llm_enabled: false

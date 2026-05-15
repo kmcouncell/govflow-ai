@@ -1,0 +1,13 @@
+---
+description: GovFlow AI monorepo conventions (backend + frontend)
+globs:
+  - "**/*"
+---
+
+# GovFlow AI
+
+- **No hard-coded runtime values** in application code: use root `.env` / process environment, YAML under `config/`, and typed settings (`GovFlowSettings` + `MergedFileConfig` on the backend; `VITE_*` + `src/lib/env.ts` on the frontend).
+- Prefer **structured logging** (structlog) on the backend; avoid `print` in services.
+- **Graceful degradation**: optional integrations (LLM, persistence) must fail soft with clear HTTP errors and logs, not unhandled exceptions in request paths.
+- **Type safety**: Python 3.12 + mypy strict where practical; TypeScript `strict` on the frontend.
+- Match existing **layout and naming**; keep changes minimal and scoped to the task.

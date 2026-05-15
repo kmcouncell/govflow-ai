@@ -1,0 +1,28 @@
+# Application defaults (non-secret). Override via env using GOVFLOW_* keys mapped in settings.
+
+app:
+  name: "GovFlow AI"
+  description: "Federal Government Workflow AI Assistant API"
+  api:
+    title: "GovFlow AI"
+    version: "0.1.0"
+    docs_enabled: true
+    openapi_url: "/openapi.json"
+  cors:
+    allow_credentials: true
+    allow_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "PATCH"
+      - "DELETE"
+      - "OPTIONS"
+    allow_headers:
+      - "*"
+  graph:
+    default_thread_ttl_seconds: 3600
+    max_steps: 50
+
+features:
+  llm_enabled: false
+  graph_persistence_enabled: false

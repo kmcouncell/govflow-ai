@@ -1,0 +1,42 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file:
+      - .env
+    environment:
+      GOVFLOW_ENV: ${GOVFLOW_ENV:-development}
+      GOVFLOW_CONFIG_DIR: ${GOVFLOW_CONFIG_DIR:-/app/config}
+      GOVFLOW_SAMPLE_DATA_DIR: ${GOVFLOW_SAMPLE_DATA_DIR:-/app/sample_data}
+      GOVFLOW_LOG_DIR: ${GOVFLOW_LOG_DIR:-/app/logs}
+      GOVFLOW_BACKEND_HOST: ${GOVFLOW_BACKEND_HOST:-0.0.0.0}
+      GOVFLOW_BACKEND_PORT: ${GOVFLOW_BACKEND_PORT:-8000}
+      GOVFLOW_BACKEND_CORS_ORIGINS: ${GOVFLOW_BACKEND_CORS_ORIGINS:-http://localhost:5173}
+      GOVFLOW_LOG_LEVEL: ${GOVFLOW_LOG_LEVEL:-INFO}
+      GOVFLOW_LOG_JSON: ${GOVFLOW_LOG_JSON:-true}
+    volumes:
+      - ./config:/app/config:ro
+      - ./sample_data:/app/sample_data:ro
+    ports:
+      - "${GOVFLOW_BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_GOVFLOW_API_BASE_URL: ${VITE_GOVFLOW_API_BASE_URL:-http://localhost:8000}
+        VITE_GOVFLOW_APP_NAME: ${VITE_GOVFLOW_APP_NAME:-GovFlow AI}
+        VITE_GOVFLOW_ENV: ${VITE_GOVFLOW_ENV:-production}
+    ports:
+      - "${FRONTEND_HOST_PORT:-5173}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
