@@ -102,3 +102,5 @@ class GraphInvokeResponse(BaseModel):
     messages: list[dict[str, Any]]
     observability: dict[str, Any]
     active_agent: str | None = None
+    guardrails: dict[str, Any] = Field(default_factory=dict)
+    request_latency_ms: float | None = None

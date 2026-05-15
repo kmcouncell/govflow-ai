@@ -42,6 +42,26 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         if s.security_permissions_policy.strip():
             response.headers["Permissions-Policy"] = s.security_permissions_policy.strip()
 
+        rai = getattr(request.app.state, "responsible_ai", None)
+        if rai is not None:
+            hs = rai.http_security
+            if hs.content_security_policy.strip():
+                response.headers["Content-Security-Policy"] = hs.content_security_policy.strip()
+            if hs.cross_origin_opener_policy.strip():
+                response.headers["Cross-Origin-Opener-Policy"] = (
+                    hs.cross_origin_opener_policy.strip()
+                )
+            if hs.cross_origin_resource_policy.strip():
+                response.headers["Cross-Origin-Resource-Policy"] = (
+                    hs.cross_origin_resource_policy.strip()
+                )
+            if hs.permissions_policy_extra.strip():
+                existing = response.headers.get("Permissions-Policy", "")
+                extra = hs.permissions_policy_extra.strip()
+                response.headers["Permissions-Policy"] = (
+                    f"{existing}, {extra}" if existing else extra
+                )
+
         return response
 
 

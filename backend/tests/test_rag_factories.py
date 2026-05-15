@@ -24,7 +24,6 @@ def test_build_vector_store_chroma() -> None:
 
 
 def test_pgvector_store_rejects_empty_dsn() -> None:
-    settings = get_settings()
     with pytest.raises(RagError):
         PgVectorVectorStore(dsn="   ", collection_id="c", dimensions=8)
 

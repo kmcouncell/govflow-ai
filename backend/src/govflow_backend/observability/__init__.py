@@ -1,0 +1,1 @@
+"""Observability helpers (audit, metrics)."""

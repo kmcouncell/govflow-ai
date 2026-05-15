@@ -22,16 +22,20 @@ from govflow_backend.core.logging import (
     get_logger,
     setup_logging,
 )
+from govflow_backend.core.rate_limit import RateLimitMiddleware
+from govflow_backend.core.request_metrics import RequestMetricsMiddleware
 from govflow_backend.core.security import install_security_middleware
 from govflow_backend.exceptions import (
     ConfigurationError,
     ExternalServiceError,
     GovFlowError,
+    GuardrailsError,
     RagError,
 )
 from govflow_backend.graph.workflow import build_stub_graph
 from govflow_backend.rag.factories import build_rag_runtime
 from govflow_backend.rag.yaml_loader import load_rag_config
+from govflow_backend.responsible_ai.loader import load_responsible_ai_config
 
 
 def register_exception_handlers(application: FastAPI) -> None:
@@ -54,6 +58,18 @@ def register_exception_handlers(application: FastAPI) -> None:
         return JSONResponse(
             status_code=503,
             content={"detail": "external_service_unavailable", "message": str(exc)},
+        )
+
+    @application.exception_handler(GuardrailsError)
+    async def _guardrails_error(_: Request, exc: GuardrailsError) -> JSONResponse:
+        get_logger(__name__).warning("guardrails_error", error=str(exc), flags=exc.flags)
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": "guardrails_violation",
+                "message": str(exc),
+                "flags": exc.flags,
+            },
         )
 
     @application.exception_handler(GovFlowError)
@@ -107,6 +123,10 @@ def create_app() -> FastAPI:
         config_dir=settings.resolved_config_dir,
         environment=settings.environment,
     )
+    application.state.responsible_ai = load_responsible_ai_config(
+        config_dir=settings.resolved_config_dir,
+        environment=settings.environment,
+    )
 
     register_exception_handlers(application)
 
@@ -121,6 +141,8 @@ def create_app() -> FastAPI:
     application.add_middleware(HttpAccessLogMiddleware, settings=settings)
     application.add_middleware(CorrelationIdMiddleware, settings=settings)
     install_security_middleware(application, settings)
+    application.add_middleware(RequestMetricsMiddleware)
+    application.add_middleware(RateLimitMiddleware)
 
     application.include_router(health_router, prefix="/health", tags=["health"])
     application.include_router(graph_router, prefix="/v1/graph", tags=["graph"])

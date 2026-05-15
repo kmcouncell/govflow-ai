@@ -1,0 +1,8 @@
+# Relaxed defaults for local development and automated tests.
+
+rate_limiting:
+  enabled: false
+
+guardrails:
+  hallucination_detection:
+    min_assistant_chars: 500

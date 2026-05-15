@@ -106,6 +106,7 @@ class CorrelationIdMiddleware(BaseHTTPMiddleware):
             http_method=request.method,
             http_path=request.url.path,
         )
+        request.state.correlation_id = correlation_id
         try:
             response = await call_next(request)
             response.headers[self._settings.correlation_id_response_header] = correlation_id
