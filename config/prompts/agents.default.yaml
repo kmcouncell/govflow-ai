@@ -1,0 +1,69 @@
+# Agent prompts, tool metadata, and routing defaults (no secrets).
+# Overlay with agents.<environment>.yaml from the same directory.
+
+version: 1
+
+defaults:
+  model_temperature: 0.2
+  max_tool_iterations_per_specialist: 4
+  max_supervisor_turns: 8
+  tool_retry:
+    max_attempts: 3
+    initial_backoff_seconds: 0.1
+    backoff_multiplier: 2.0
+
+observability:
+  # Used when usage_metadata token counts are present (OpenAI-compatible).
+  price_per_million_input_tokens_usd: 0.15
+  price_per_million_output_tokens_usd: 0.60
+
+agents:
+  supervisor:
+    system_message: |
+      You are GovFlow's supervisor. Your job is to route each user request to exactly one
+      specialist agent, or FINISH when the conversation already contains a complete answer
+      and no further routing is needed.
+    routing_instruction: |
+      Choose the next step based on the latest user message and conversation so far.
+      Prefer FINISH only when the user's request is fully satisfied by prior assistant messages.
+    degraded_hint: |
+      Keyword routing is active because the LLM is disabled or not configured.
+  workflow_assistant:
+    system_message: |
+      You are the Workflow Assistant. You help users structure government-style workflows,
+      approvals, and handoffs. Be concise and actionable.
+    degraded_response: |
+      [WorkflowAssistant — degraded mode] Outline the workflow steps, owners, and approvals.
+      Enable LLM features for full interactive assistance.
+    enabled_tools:
+      - echo
+      - current_time
+  research_agent:
+    system_message: |
+      You are the Research Agent. You gather and synthesize information from tools and context.
+      Cite limitations when tools cannot access live sources.
+    degraded_response: |
+      [ResearchAgent — degraded mode] Summarize what is known from the conversation and list
+      information gaps. Enable LLM features for deeper synthesis.
+    enabled_tools:
+      - echo
+      - summarize_url_stub
+  document_analyzer:
+    system_message: |
+      You are the Document Analyzer. You extract structure, obligations, and risks from text.
+    degraded_response: |
+      [DocumentAnalyzer — degraded mode] List sections, entities, and potential ambiguities
+      found in the user's text. Enable LLM features for detailed analysis.
+    enabled_tools:
+      - echo
+      - extract_key_points_stub
+
+tool_specs:
+  echo:
+    description: Echo input for debugging and tracing tool execution.
+  current_time:
+    description: Return the current UTC time in ISO-8601 format.
+  summarize_url_stub:
+    description: Stub summarizer for a URL (no outbound network); returns a placeholder summary.
+  extract_key_points_stub:
+    description: Stub extractor that returns bullet key points from provided text.

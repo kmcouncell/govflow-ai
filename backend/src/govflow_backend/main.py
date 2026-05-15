@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from govflow_backend.agents.loader import load_agents_prompt_config
 from govflow_backend.api.routers.graph import router as graph_router
 from govflow_backend.api.routers.health import router as health_router
 from govflow_backend.api.routers.rag import router as rag_router
@@ -21,7 +23,12 @@ from govflow_backend.core.logging import (
     setup_logging,
 )
 from govflow_backend.core.security import install_security_middleware
-from govflow_backend.exceptions import ConfigurationError, ExternalServiceError, GovFlowError, RagError
+from govflow_backend.exceptions import (
+    ConfigurationError,
+    ExternalServiceError,
+    GovFlowError,
+    RagError,
+)
 from govflow_backend.graph.workflow import build_stub_graph
 from govflow_backend.rag.factories import build_rag_runtime
 from govflow_backend.rag.yaml_loader import load_rag_config
@@ -59,7 +66,7 @@ def register_exception_handlers(application: FastAPI) -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: GovFlowSettings = app.state.settings
     file_config: MergedFileConfig = app.state.file_config
     settings.resolved_log_dir.mkdir(parents=True, exist_ok=True)
@@ -70,7 +77,11 @@ async def lifespan(app: FastAPI):
         environment=settings.environment,
         config_dir=str(settings.resolved_config_dir),
     )
-    app.state.graph = build_stub_graph(settings, file_config)
+    app.state.agents_prompts = load_agents_prompt_config(
+        config_dir=settings.resolved_config_dir,
+        environment=settings.environment,
+    )
+    app.state.graph = build_stub_graph(settings, file_config, app.state.agents_prompts)
     app.state.rag_runtime = build_rag_runtime(settings, app.state.rag_yaml)
     yield
     log.info("shutdown_complete")

@@ -1,0 +1,4 @@
+# Development overlays for agent prompts (optional).
+
+defaults:
+  max_supervisor_turns: 10
