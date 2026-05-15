@@ -19,3 +19,11 @@ def test_health_ready() -> None:
         body = response.json()
         assert body["environment"] == "development"
         assert "sample_data_dir_exists" in body
+
+
+def test_correlation_id_echo() -> None:
+    with TestClient(app) as client:
+        cid = "test-correlation-abc"
+        response = client.get("/health/live", headers={"X-Correlation-ID": cid})
+        assert response.status_code == 200
+        assert response.headers.get("X-Correlation-ID") == cid

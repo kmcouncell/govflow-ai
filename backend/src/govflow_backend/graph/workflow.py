@@ -8,7 +8,7 @@ from langgraph.graph import END, StateGraph
 
 from govflow_backend.config_models import MergedFileConfig
 from govflow_backend.exceptions import ExternalServiceError
-from govflow_backend.settings import GovFlowSettings
+from govflow_backend.core.config import GovFlowSettings
 
 
 class GraphState(TypedDict, total=False):

@@ -1,4 +1,4 @@
-"""Pydantic v2 settings: environment variables and optional env-specific .env files."""
+"""Complete application settings from environment (see repository root `.env.example`)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Literal
 
 from dotenv import load_dotenv
-from pydantic import AliasChoices, Field, computed_field
+from pydantic import AliasChoices, Field, computed_field, field_validator
 from pydantic_settings import (
     BaseSettings,
     PydanticBaseSettingsSource,
@@ -21,7 +21,7 @@ EnvironmentName = Literal["development", "staging", "production"]
 
 
 def _prime_env_from_dotenv() -> None:
-    """Load base `.env` into the process so `GOVFLOW_ENV` is visible before layered files."""
+    """Load base `.env` so `GOVFLOW_ENV` exists before optional `.env.<env>` layering."""
 
     base = Path(".env")
     if base.is_file():
@@ -33,12 +33,12 @@ _prime_env_from_dotenv()
 
 def _split_csv(value: str | list[str]) -> list[str]:
     if isinstance(value, list):
-        return [v.strip() for v in value if str(v).strip()]
+        return [str(v).strip() for v in value if str(v).strip()]
     return [part.strip() for part in str(value).split(",") if part.strip()]
 
 
 class GovFlowSettings(BaseSettings):
-    """All runtime configuration originates from the environment (see root `.env.example`)."""
+    """All runtime configuration is supplied via environment variables."""
 
     model_config = SettingsConfigDict(
         env_file_encoding="utf-8",
@@ -46,6 +46,7 @@ class GovFlowSettings(BaseSettings):
         case_sensitive=False,
     )
 
+    # --- runtime / paths ---
     environment: EnvironmentName = Field(
         validation_alias=AliasChoices("GOVFLOW_ENV", "ENVIRONMENT"),
     )
@@ -53,24 +54,64 @@ class GovFlowSettings(BaseSettings):
     sample_data_dir: Path = Field(validation_alias="GOVFLOW_SAMPLE_DATA_DIR")
     log_dir: Path = Field(validation_alias="GOVFLOW_LOG_DIR")
 
+    # --- HTTP server (uvicorn) ---
     backend_host: str = Field(validation_alias="GOVFLOW_BACKEND_HOST")
     backend_port: int = Field(validation_alias="GOVFLOW_BACKEND_PORT", ge=1, le=65535)
     backend_reload: bool = Field(validation_alias="GOVFLOW_BACKEND_RELOAD")
     backend_root_path: str = Field(validation_alias="GOVFLOW_BACKEND_ROOT_PATH")
     backend_cors_origins_csv: str = Field(validation_alias="GOVFLOW_BACKEND_CORS_ORIGINS")
 
+    # --- logging ---
     log_level: str = Field(validation_alias="GOVFLOW_LOG_LEVEL")
     log_json: bool = Field(validation_alias="GOVFLOW_LOG_JSON")
+    log_uvicorn_access: bool = Field(validation_alias="GOVFLOW_LOG_UVICORN_ACCESS")
+    http_access_log_enabled: bool = Field(validation_alias="GOVFLOW_HTTP_ACCESS_LOG_ENABLED")
 
+    # --- correlation / tracing ---
+    correlation_id_request_header: str = Field(
+        validation_alias="GOVFLOW_CORRELATION_ID_REQUEST_HEADER",
+    )
+    correlation_id_response_header: str = Field(
+        validation_alias="GOVFLOW_CORRELATION_ID_RESPONSE_HEADER",
+    )
+
+    # --- security ---
+    security_trusted_hosts_csv: str = Field(validation_alias="GOVFLOW_SECURITY_TRUSTED_HOSTS")
+    security_enable_hsts: bool = Field(validation_alias="GOVFLOW_SECURITY_ENABLE_HSTS")
+    security_hsts_max_age_seconds: int = Field(
+        validation_alias="GOVFLOW_SECURITY_HSTS_MAX_AGE_SECONDS",
+        ge=0,
+    )
+    security_enable_frame_options: bool = Field(
+        validation_alias="GOVFLOW_SECURITY_ENABLE_FRAME_OPTIONS",
+    )
+    security_frame_options_value: str = Field(
+        validation_alias="GOVFLOW_SECURITY_FRAME_OPTIONS_VALUE",
+    )
+    security_enable_content_type_options: bool = Field(
+        validation_alias="GOVFLOW_SECURITY_ENABLE_CONTENT_TYPE_OPTIONS",
+    )
+    security_referrer_policy: str = Field(validation_alias="GOVFLOW_SECURITY_REFERRER_POLICY")
+    security_permissions_policy: str = Field(
+        validation_alias="GOVFLOW_SECURITY_PERMISSIONS_POLICY",
+    )
+
+    # --- LLM (optional) ---
     openai_api_key: str | None = Field(default=None, validation_alias="GOVFLOW_OPENAI_API_KEY")
     openai_base_url: str | None = Field(default=None, validation_alias="GOVFLOW_OPENAI_BASE_URL")
     openai_model: str | None = Field(default=None, validation_alias="GOVFLOW_OPENAI_MODEL")
 
+    # --- LangGraph (optional) ---
     langgraph_checkpoint_dir: str | None = Field(
         default=None,
         validation_alias="GOVFLOW_LANGGRAPH_CHECKPOINT_DIR",
     )
     langgraph_thread_id_prefix: str = Field(validation_alias="GOVFLOW_LANGGRAPH_THREAD_ID_PREFIX")
+
+    @field_validator("log_level")
+    @classmethod
+    def _upper_log_level(cls, value: str) -> str:
+        return value.strip().upper()
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -96,16 +137,21 @@ class GovFlowSettings(BaseSettings):
             path = Path.cwd() / path
         return path.resolve()
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def backend_cors_origins(self) -> list[str]:
+        return _split_csv(self.backend_cors_origins_csv)
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def security_trusted_hosts(self) -> list[str]:
+        return _split_csv(self.security_trusted_hosts_csv)
+
     def model_post_init(self, __context: object) -> None:
         if not self.resolved_config_dir.is_dir():
             raise ConfigurationError(
                 f"GOVFLOW_CONFIG_DIR is not a directory: {self.resolved_config_dir}",
             )
-
-    @computed_field  # type: ignore[prop-decorator]
-    @property
-    def backend_cors_origins(self) -> list[str]:
-        return _split_csv(self.backend_cors_origins_csv)
 
     @classmethod
     def settings_customise_sources(
@@ -116,8 +162,6 @@ class GovFlowSettings(BaseSettings):
         dotenv_settings: PydanticBaseSettingsSource,
         file_secret_settings: PydanticBaseSettingsSource,
     ) -> tuple[PydanticBaseSettingsSource, ...]:
-        """Layer optional `.env.<GOVFLOW_ENV>` after base `.env` (primed on import)."""
-
         from os import getenv
 
         env_name = getenv("GOVFLOW_ENV") or getenv("ENVIRONMENT")
@@ -139,6 +183,10 @@ class GovFlowSettings(BaseSettings):
 
 @lru_cache
 def get_settings() -> GovFlowSettings:
-    """Cached settings singleton for import-time access patterns."""
+    """Process-wide cached settings (clear in tests when environment changes)."""
 
     return GovFlowSettings()  # type: ignore[call-arg]
+
+
+# Alias for readability in type hints
+Settings = GovFlowSettings

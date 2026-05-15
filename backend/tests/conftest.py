@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import pytest
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _CONFIG_DIR = _REPO_ROOT / "config"
 
@@ -21,11 +23,29 @@ def _install_test_env() -> None:
     os.environ["GOVFLOW_BACKEND_CORS_ORIGINS"] = "http://localhost:5173"
     os.environ["GOVFLOW_LOG_LEVEL"] = "INFO"
     os.environ["GOVFLOW_LOG_JSON"] = "false"
+    os.environ["GOVFLOW_LOG_UVICORN_ACCESS"] = "false"
+    os.environ["GOVFLOW_HTTP_ACCESS_LOG_ENABLED"] = "false"
+    os.environ["GOVFLOW_CORRELATION_ID_REQUEST_HEADER"] = "X-Correlation-ID"
+    os.environ["GOVFLOW_CORRELATION_ID_RESPONSE_HEADER"] = "X-Correlation-ID"
+    os.environ["GOVFLOW_SECURITY_TRUSTED_HOSTS"] = ""
+    os.environ["GOVFLOW_SECURITY_ENABLE_HSTS"] = "false"
+    os.environ["GOVFLOW_SECURITY_HSTS_MAX_AGE_SECONDS"] = "0"
+    os.environ["GOVFLOW_SECURITY_ENABLE_FRAME_OPTIONS"] = "true"
+    os.environ["GOVFLOW_SECURITY_FRAME_OPTIONS_VALUE"] = "DENY"
+    os.environ["GOVFLOW_SECURITY_ENABLE_CONTENT_TYPE_OPTIONS"] = "true"
+    os.environ["GOVFLOW_SECURITY_REFERRER_POLICY"] = "strict-origin-when-cross-origin"
+    os.environ["GOVFLOW_SECURITY_PERMISSIONS_POLICY"] = ""
     os.environ["GOVFLOW_LANGGRAPH_THREAD_ID_PREFIX"] = "test"
 
 
 _install_test_env()
 
-from govflow_backend.settings import get_settings  # noqa: E402
+from govflow_backend.core.config import get_settings  # noqa: E402
 
 get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _reset_settings_cache_after_test() -> None:
+    yield
+    get_settings.cache_clear()
