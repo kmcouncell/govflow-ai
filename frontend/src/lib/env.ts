@@ -4,6 +4,7 @@ export type PublicEnv = {
   apiBaseUrl: string;
   appName: string;
   environment: string;
+  graphStreamPath: string;
 };
 
 function readRequired(key: keyof ImportMetaEnv): string {
@@ -19,5 +20,6 @@ export function getPublicEnv(): PublicEnv {
     apiBaseUrl: readRequired("VITE_GOVFLOW_API_BASE_URL"),
     appName: readRequired("VITE_GOVFLOW_APP_NAME"),
     environment: readRequired("VITE_GOVFLOW_ENV"),
+    graphStreamPath: readRequired("VITE_GOVFLOW_GRAPH_STREAM_PATH"),
   };
 }
